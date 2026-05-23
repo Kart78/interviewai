@@ -29,40 +29,272 @@ const PLANS = {
   enterprise: { name: "Enterprise", price: null, tokens: Infinity, sessions: 999, voice: true, color: COLORS.amber },
 };
 
-const TECH_STACKS = [
-  "Frontend (React/Vue/Angular)", "Backend (Node/Python/Java)", "Full Stack",
-  "Data Science / ML", "DevOps / Cloud", "Mobile (iOS/Android)",
-  "System Design", "Algorithms & DSA", "Product Management", "General Software",
+// ─── INDUSTRY CATEGORIES ─────────────────────────────────────────────────────
+const INDUSTRIES = [
+  { id: "technology",    label: "Technology & Software",  icon: "💻" },
+  { id: "business",      label: "Business & Finance",     icon: "📊" },
+  { id: "healthcare",    label: "Healthcare & Medical",   icon: "🏥" },
+  { id: "creative",      label: "Creative & Marketing",   icon: "🎨" },
+  { id: "education",     label: "Education & Research",   icon: "🎓" },
+  { id: "legal",         label: "Legal & Compliance",     icon: "⚖️" },
+  { id: "engineering",   label: "Engineering & Science",  icon: "⚙️" },
+  { id: "sales",         label: "Sales & Customer Success", icon: "🤝" },
+  { id: "operations",    label: "Operations & Logistics", icon: "📦" },
+  { id: "hr",            label: "HR & People Ops",        icon: "👥" },
 ];
 
+const ROLES_BY_INDUSTRY = {
+  technology: [
+    "Frontend Engineer", "Backend Engineer", "Full Stack Engineer",
+    "Data Scientist", "ML Engineer", "DevOps / Cloud Engineer",
+    "Mobile Developer", "Product Manager", "QA Engineer", "Security Engineer",
+  ],
+  business: [
+    "Financial Analyst", "Investment Banker", "Business Analyst",
+    "Management Consultant", "Strategy Manager", "CFO / Finance Director",
+    "Accountant / CPA", "Risk Manager", "Portfolio Manager", "Economist",
+  ],
+  healthcare: [
+    "Registered Nurse", "Physician / Doctor", "Pharmacist",
+    "Physical Therapist", "Healthcare Administrator", "Medical Researcher",
+    "Dentist", "Psychologist / Therapist", "Radiologist", "Surgeon",
+  ],
+  creative: [
+    "UX / UI Designer", "Graphic Designer", "Marketing Manager",
+    "Content Strategist", "Brand Manager", "Copywriter",
+    "Social Media Manager", "Art Director", "Video Producer", "SEO Specialist",
+  ],
+  education: [
+    "Teacher / Instructor", "University Lecturer", "Curriculum Designer",
+    "School Counselor", "Academic Researcher", "Education Administrator",
+    "Instructional Designer", "Librarian", "Tutor / Coach", "Department Head",
+  ],
+  legal: [
+    "Lawyer / Attorney", "Paralegal", "Compliance Officer",
+    "Legal Analyst", "Contract Manager", "Public Defender",
+    "Corporate Counsel", "Judge / Magistrate", "Legal Consultant", "Notary",
+  ],
+  engineering: [
+    "Mechanical Engineer", "Civil Engineer", "Electrical Engineer",
+    "Chemical Engineer", "Aerospace Engineer", "Structural Engineer",
+    "Environmental Engineer", "Industrial Engineer", "Biomedical Engineer", "Systems Engineer",
+  ],
+  sales: [
+    "Account Executive", "Sales Manager", "Customer Success Manager",
+    "Business Development Rep", "Sales Engineer", "VP of Sales",
+    "Retail Sales Associate", "Real Estate Agent", "Insurance Agent", "SDR / BDR",
+  ],
+  operations: [
+    "Operations Manager", "Supply Chain Manager", "Logistics Coordinator",
+    "Project Manager", "Scrum Master", "Program Manager",
+    "Procurement Manager", "Warehouse Manager", "Process Improvement Analyst", "COO",
+  ],
+  hr: [
+    "HR Generalist", "Recruiter / Talent Acquisition", "HR Business Partner",
+    "L&D Specialist", "Compensation & Benefits Manager", "HR Director",
+    "DEI Program Manager", "Payroll Specialist", "Org Development Consultant", "CHRO",
+  ],
+};
+
+const SENIORITY_BY_INDUSTRY = {
+  technology:  ["intern", "junior", "mid", "senior", "staff / principal"],
+  business:    ["analyst", "associate", "manager", "director", "VP / C-suite"],
+  healthcare:  ["student / resident", "entry-level", "experienced", "senior", "chief / director"],
+  creative:    ["junior", "mid-level", "senior", "lead", "director / VP"],
+  education:   ["entry-level", "experienced", "senior", "lead", "head / dean"],
+  legal:       ["paralegal / associate", "junior attorney", "associate", "senior associate", "partner / director"],
+  engineering: ["graduate / intern", "junior", "mid-level", "senior", "principal / director"],
+  sales:       ["SDR / entry", "account exec", "senior AE", "manager", "director / VP"],
+  operations:  ["coordinator", "specialist", "manager", "senior manager", "director / VP"],
+  hr:          ["coordinator", "generalist", "manager", "senior manager", "director / CHRO"],
+};
+
 const SAMPLE_QUESTIONS = {
-  "Frontend (React/Vue/Angular)": [
+  // ── Technology ──
+  "Frontend Engineer": [
     "Explain the virtual DOM and how React uses it for performance.",
     "What are React hooks and why were they introduced?",
     "How would you optimize a slow React application?",
     "Explain the difference between controlled and uncontrolled components.",
     "Walk me through how you'd implement a custom hook for data fetching.",
   ],
-  "Backend (Node/Python/Java)": [
+  "Backend Engineer": [
     "Explain the event loop in Node.js.",
     "How would you design a rate limiter for an API?",
     "What are the differences between SQL and NoSQL databases?",
     "Explain REST vs GraphQL and when you'd choose each.",
     "How do you handle database transactions to prevent race conditions?",
   ],
-  "Full Stack": [
-    "Walk me through your approach to designing a scalable web application.",
-    "How do you handle authentication and session management?",
-    "Explain how you'd implement real-time features in a web app.",
-    "What's your approach to handling errors across the full stack?",
-    "How would you design the database schema for a social media platform?",
+  "Data Scientist": [
+    "Walk me through how you would approach a new machine learning problem from scratch.",
+    "How do you handle class imbalance in a classification problem?",
+    "Explain the bias-variance tradeoff and how you manage it.",
+    "What's the difference between bagging and boosting?",
+    "Describe a time your model performed well in training but poorly in production.",
   ],
+  "Product Manager": [
+    "How do you prioritize features when you have limited engineering resources?",
+    "Tell me about a product you shipped and what you'd do differently.",
+    "How do you measure the success of a product launch?",
+    "Walk me through how you'd design an onboarding flow for a new B2B product.",
+    "How do you handle disagreements between engineering and design?",
+  ],
+  // ── Business ──
+  "Financial Analyst": [
+    "Walk me through a DCF valuation and when you'd use it vs a comparable company analysis.",
+    "How do you build a three-statement financial model?",
+    "Explain the difference between EBITDA and free cash flow.",
+    "How would you evaluate whether a company should pursue an acquisition?",
+    "Tell me about a time you found a significant insight in a financial dataset.",
+  ],
+  "Business Analyst": [
+    "Describe your process for gathering and documenting business requirements.",
+    "How do you handle conflicting priorities from different stakeholders?",
+    "Walk me through how you would improve a process that has too many manual steps.",
+    "Tell me about a time your analysis changed a business decision.",
+    "How do you communicate complex data findings to non-technical stakeholders?",
+  ],
+  "Management Consultant": [
+    "How would you structure a problem around declining revenues for a retail client?",
+    "Walk me through a case: a grocery chain's profits have dropped 20% in a year.",
+    "How do you quickly build credibility with a client in a new industry?",
+    "Tell me about a time you had to deliver an unwelcome recommendation.",
+    "How do you manage workstreams across a team with competing deadlines?",
+  ],
+  // ── Healthcare ──
+  "Registered Nurse": [
+    "Describe how you prioritize patient care when you have multiple critical patients.",
+    "Tell me about a time you caught a potential medication error.",
+    "How do you communicate difficult news to a patient's family?",
+    "Describe your approach to maintaining patient dignity during personal care.",
+    "How do you handle a situation where you disagree with a physician's orders?",
+  ],
+  "Physician / Doctor": [
+    "Walk me through how you approach a diagnostic workup for a patient with chest pain.",
+    "Describe a challenging case and how you handled uncertainty in the diagnosis.",
+    "How do you explain a complex diagnosis to a patient with low health literacy?",
+    "Tell me about a time you had to make a difficult decision under time pressure.",
+    "How do you stay current with the latest clinical guidelines and research?",
+  ],
+  "Psychologist / Therapist": [
+    "How do you establish therapeutic rapport with a new client?",
+    "Describe your approach to treatment planning for a client with comorbid conditions.",
+    "How do you handle a situation where a client is not making progress?",
+    "What is your approach to maintaining professional boundaries?",
+    "Tell me about a time you had to break confidentiality and how you handled it.",
+  ],
+  // ── Creative ──
+  "UX / UI Designer": [
+    "Walk me through your design process from discovery to handoff.",
+    "Tell me about a design decision you made based on user research findings.",
+    "How do you handle feedback from stakeholders that conflicts with your design rationale?",
+    "Describe a time you had to design for accessibility constraints.",
+    "How do you prioritize design debt alongside new feature work?",
+  ],
+  "Marketing Manager": [
+    "How do you build a go-to-market strategy for a new product launch?",
+    "Walk me through a campaign you ran from brief to results.",
+    "How do you measure the ROI of a brand awareness campaign?",
+    "Tell me about a time a campaign underperformed and what you did.",
+    "How do you balance short-term performance marketing with long-term brand building?",
+  ],
+  // ── Education ──
+  "Teacher / Instructor": [
+    "How do you differentiate instruction for students at varying ability levels?",
+    "Describe a lesson that didn't go well and what you changed for next time.",
+    "How do you engage students who are disruptive or disengaged?",
+    "Tell me about a time you collaborated with a colleague to improve outcomes.",
+    "How do you communicate student progress to parents effectively?",
+  ],
+  "Academic Researcher": [
+    "Describe your research methodology and how you ensure rigor.",
+    "How do you handle null or contradictory results in your research?",
+    "Walk me through how you've contributed to your field in the last year.",
+    "How do you manage a research project from proposal to publication?",
+    "Tell me about a time your research had a real-world impact.",
+  ],
+  // ── Legal ──
+  "Lawyer / Attorney": [
+    "How do you manage a heavy caseload with competing deadlines?",
+    "Describe how you prepare a client for a deposition.",
+    "Tell me about a case where you had to think creatively to find a legal argument.",
+    "How do you handle a client who wants to pursue a strategy you believe is inadvisable?",
+    "Walk me through your approach to due diligence on a major transaction.",
+  ],
+  "Compliance Officer": [
+    "How do you stay current with regulatory changes in your industry?",
+    "Describe how you build a compliance program from scratch.",
+    "Tell me about a time you identified a compliance risk before it became a problem.",
+    "How do you gain buy-in from business units resistant to compliance requirements?",
+    "Walk me through how you would respond to a regulatory audit.",
+  ],
+  // ── Engineering ──
+  "Mechanical Engineer": [
+    "Walk me through your design process for a mechanical component under stress.",
+    "How do you approach failure mode and effects analysis (FMEA)?",
+    "Describe a time a design failed and how you diagnosed and resolved it.",
+    "How do you balance performance requirements with manufacturing cost constraints?",
+    "Tell me about a project where you had to iterate rapidly on a physical prototype.",
+  ],
+  "Civil Engineer": [
+    "How do you approach a site assessment for a new construction project?",
+    "Describe your experience with structural load calculations.",
+    "How do you manage scope creep on a long-duration infrastructure project?",
+    "Tell me about a time you identified a safety risk on a project.",
+    "How do you coordinate with contractors, architects, and local authorities simultaneously?",
+  ],
+  // ── Sales ──
+  "Account Executive": [
+    "Walk me through your sales process from prospecting to close.",
+    "Tell me about your largest deal and how you closed it.",
+    "How do you handle a prospect who goes silent after a demo?",
+    "Describe how you build champions inside a target account.",
+    "How do you manage a pipeline with 50+ opportunities?",
+  ],
+  "Customer Success Manager": [
+    "How do you identify early signs of churn in your accounts?",
+    "Describe how you run a quarterly business review with an executive sponsor.",
+    "Tell me about a customer you saved from churning and how you did it.",
+    "How do you manage a portfolio of accounts with different needs and risk levels?",
+    "How do you drive expansion revenue without feeling pushy to the customer?",
+  ],
+  // ── Operations ──
+  "Project Manager": [
+    "How do you handle a project that is behind schedule and over budget?",
+    "Describe your approach to managing stakeholder expectations on a complex project.",
+    "How do you build a project plan when requirements are still unclear?",
+    "Tell me about a project that failed and what you learned.",
+    "How do you maintain team motivation during a long, difficult project?",
+  ],
+  "Operations Manager": [
+    "How do you identify and eliminate operational bottlenecks?",
+    "Describe a process improvement initiative you led and its outcomes.",
+    "How do you balance day-to-day operations with long-term improvement projects?",
+    "Tell me about a time you had to manage an operational crisis.",
+    "How do you build KPIs and dashboards to track operational health?",
+  ],
+  // ── HR ──
+  "HR Generalist": [
+    "How do you handle a complex employee relations issue while remaining impartial?",
+    "Describe your process for conducting a thorough and fair investigation.",
+    "How do you advise a manager who is struggling with a low-performing employee?",
+    "Tell me about a time you had to implement an unpopular policy change.",
+    "How do you balance employee advocacy with company interests?",
+  ],
+  "Recruiter / Talent Acquisition": [
+    "How do you source passive candidates for a hard-to-fill role?",
+    "Describe how you build a talent pipeline for roles you hire repeatedly.",
+    "How do you sell a candidate on a role when competing with a higher-paying offer?",
+    "Tell me about a time you made a mis-hire and what you learned.",
+    "How do you measure and improve quality-of-hire over time?",
+  ],
+  // ── Default fallback ──
   "default": [
-    "Tell me about yourself and your technical background.",
-    "Describe a challenging technical problem you solved recently.",
-    "How do you stay current with new technologies?",
-    "Explain a time you had to refactor a large codebase.",
-    "How do you approach code reviews?",
+    "Tell me about yourself and what draws you to this role.",
+    "Describe a challenging situation at work and how you handled it.",
+    "What is your greatest professional achievement so far?",
+    "How do you handle feedback or criticism from a manager?",
+    "Where do you see yourself in 3–5 years?",
   ],
 };
 
@@ -325,9 +557,9 @@ function DashboardScreen({ user, onStart, onUpgrade, onSchema }) {
   ];
 
   const recentSessions = [
-    { role: "Senior Frontend Engineer", stack: "React", score: 82, date: "Today", status: "completed" },
-    { role: "Full Stack Developer", stack: "Node.js", score: 71, date: "Yesterday", status: "completed" },
-    { role: "Software Engineer", stack: "Algorithms", score: 65, date: "3 days ago", status: "completed" },
+    { role: "Financial Analyst", industry: "Business & Finance", score: 82, date: "Today", status: "completed" },
+    { role: "Registered Nurse", industry: "Healthcare", score: 71, date: "Yesterday", status: "completed" },
+    { role: "UX / UI Designer", industry: "Creative & Marketing", score: 65, date: "3 days ago", status: "completed" },
   ];
 
   return (
@@ -390,7 +622,7 @@ function DashboardScreen({ user, onStart, onUpgrade, onSchema }) {
             <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: COLORS.bgElevated, borderRadius: 10, flexWrap: "wrap", gap: 8 }}>
               <div>
                 <div style={{ color: COLORS.textPrimary, fontWeight: 500, fontSize: 14 }}>{s.role}</div>
-                <div style={{ color: COLORS.textSecondary, fontSize: 12 }}>{s.stack} · {s.date}</div>
+                <div style={{ color: COLORS.textSecondary, fontSize: 12 }}>{s.industry} · {s.date}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ fontSize: 20, fontWeight: 700, color: s.score >= 80 ? COLORS.green : s.score >= 60 ? COLORS.amber : COLORS.red }}>{s.score}%</div>
@@ -409,32 +641,36 @@ function SetupScreen({ user, onBegin, onBack }) {
   const [step, setStep] = useState(1);
   const [resumeText, setResumeText] = useState("");
   const [role, setRole] = useState("");
-  const [stack, setStack] = useState("");
-  const [seniority, setSeniority] = useState("mid");
+  const [customRole, setCustomRole] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [seniority, setSeniority] = useState("");
   const [jd, setJd] = useState("");
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
 
   const plan = PLANS[user.plan];
   const canVoice = plan.voice;
+  const seniorityLevels = industry ? SENIORITY_BY_INDUSTRY[industry] : ["entry-level", "mid-level", "senior", "lead", "director"];
+  const finalRole = role === "__custom__" ? customRole : role;
 
   const analyzeResume = async () => {
-    if (!resumeText.trim() && !role.trim()) return;
+    if (!finalRole.trim()) return;
     setLoading(true);
     try {
-      const prompt = `You are an expert technical recruiter. Analyze this resume/background and target role, then return ONLY a JSON object (no markdown) with:
+      const prompt = `You are an expert career coach and interviewer. Analyze this candidate's background for the target role, then return ONLY a valid JSON object (no markdown, no extra text):
 {
-  "skills": ["skill1", "skill2", ...],
-  "gaps": ["gap1", "gap2", ...],
-  "strengths": ["strength1", ...],
+  "skills": ["skill1", "skill2", "skill3"],
+  "gaps": ["gap1", "gap2"],
+  "strengths": ["strength1", "strength2"],
   "focus_areas": ["area1", "area2", "area3"],
-  "readiness_score": 72
+  "readiness_score": 72,
+  "interview_types": ["Behavioral", "Situational", "Technical"]
 }
 
-Resume/Background: ${resumeText || "Not provided - use general assessment"}
-Target Role: ${role || "Software Engineer"}
+Resume/Background: ${resumeText || "Not provided"}
+Target Role: ${finalRole}
+Industry: ${industry}
 Seniority: ${seniority}
-Tech Stack: ${stack}
 Job Description: ${jd || "Not provided"}`;
 
       const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -448,11 +684,19 @@ Job Description: ${jd || "Not provided"}`;
       });
       const data = await res.json();
       const text = data.content?.find(b => b.type === "text")?.text || "{}";
-      const clean = text.replace(/```json|```/g, "").trim();
+      const clean = text.replace(/\`\`\`json|\`\`\`/g, "").trim();
       setAnalysis(JSON.parse(clean));
       setStep(3);
     } catch {
-      setAnalysis({ skills: ["JavaScript", "React", "Node.js"], gaps: ["System Design", "Kubernetes"], strengths: ["Frontend development", "Problem solving"], focus_areas: ["Algorithms", "System Design", "Behavioral"], readiness_score: 68 });
+      const ind = INDUSTRIES.find(i => i.id === industry);
+      setAnalysis({
+        skills: ["Communication", "Problem solving", "Domain knowledge"],
+        gaps: ["Leadership experience", "Industry certifications"],
+        strengths: ["Relevant background", "Strong motivation"],
+        focus_areas: ["Behavioral", "Situational", "Role-specific knowledge"],
+        readiness_score: 65,
+        interview_types: ["Behavioral", "Situational", "Technical"],
+      });
       setStep(3);
     }
     setLoading(false);
@@ -466,13 +710,23 @@ Job Description: ${jd || "Not provided"}`;
   };
   const inputStyle = { ...taStyle, minHeight: "auto", height: 44, resize: "none" };
 
+  const pillBtn = (val, selected, onClick, label) => (
+    <button key={val} onClick={onClick} style={{
+      padding: "7px 14px", borderRadius: 8,
+      border: `1px solid ${selected ? COLORS.accent : COLORS.border}`,
+      background: selected ? COLORS.accentSoft : "transparent",
+      color: selected ? COLORS.accent : COLORS.textSecondary,
+      fontSize: 12, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
+    }}>{label || val}</button>
+  );
+
   return (
-    <div style={{ padding: "2rem", maxWidth: 700, margin: "0 auto" }}>
+    <div style={{ padding: "2rem", maxWidth: 720, margin: "0 auto" }}>
       <button onClick={onBack} style={{ background: "none", border: "none", color: COLORS.textSecondary, cursor: "pointer", fontSize: 14, marginBottom: "1.5rem", padding: 0 }}>← Back</button>
 
       {/* Step indicators */}
       <div style={{ display: "flex", gap: 8, marginBottom: "2rem" }}>
-        {["Resume & Role", "Settings", "AI Analysis", "Start!"].map((label, i) => (
+        {["Industry & Role", "Your Background", "AI Analysis", "Start!"].map((label, i) => (
           <div key={i} style={{ flex: 1, textAlign: "center" }}>
             <div style={{ height: 4, borderRadius: 99, background: step > i + 1 ? COLORS.accent : step === i + 1 ? COLORS.accent : COLORS.border, marginBottom: 6, transition: "background 0.3s" }} />
             <span style={{ fontSize: 11, color: step >= i + 1 ? COLORS.textSecondary : COLORS.textMuted }}>{label}</span>
@@ -480,68 +734,117 @@ Job Description: ${jd || "Not provided"}`;
         ))}
       </div>
 
+      {/* STEP 1 — Industry + Role + Seniority */}
       {step === 1 && (
         <Card>
-          <h3 style={{ color: COLORS.textPrimary, margin: "0 0 1.5rem", fontSize: 18 }}>Your Background</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <h3 style={{ color: COLORS.textPrimary, margin: "0 0 1.5rem", fontSize: 18 }}>What are you interviewing for?</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+            {/* Industry picker */}
             <div>
-              <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 6 }}>Target Role *</label>
-              <input placeholder="e.g. Senior Frontend Engineer at Stripe" value={role} onChange={e => setRole(e.target.value)} style={inputStyle} />
+              <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 10 }}>Industry *</label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 8 }}>
+                {INDUSTRIES.map(ind => (
+                  <button key={ind.id} onClick={() => { setIndustry(ind.id); setRole(""); setSeniority(""); }} style={{
+                    display: "flex", alignItems: "center", gap: 8, padding: "10px 14px",
+                    borderRadius: 10, border: `1px solid ${industry === ind.id ? COLORS.accent : COLORS.border}`,
+                    background: industry === ind.id ? COLORS.accentSoft : COLORS.bgElevated,
+                    color: industry === ind.id ? COLORS.accent : COLORS.textSecondary,
+                    fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", textAlign: "left",
+                  }}>
+                    <span>{ind.icon}</span><span>{ind.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div>
-              <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 6 }}>Paste your resume or describe your background</label>
-              <textarea placeholder="Paste resume text, or describe your experience, skills, and projects..." value={resumeText} onChange={e => setResumeText(e.target.value)} style={taStyle} />
-            </div>
-            <div>
-              <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 6 }}>Job Description (optional — for targeted prep)</label>
-              <textarea placeholder="Paste the job description here for hyper-relevant questions..." value={jd} onChange={e => setJd(e.target.value)} style={{ ...taStyle, minHeight: 80 }} />
-            </div>
-            <Btn onClick={() => setStep(2)} disabled={!role.trim()} style={{ alignSelf: "flex-end" }}>Next →</Btn>
+
+            {/* Role picker — shown after industry selected */}
+            {industry && (
+              <div>
+                <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 10 }}>Role *</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {(ROLES_BY_INDUSTRY[industry] || []).map(r =>
+                    pillBtn(r, role === r, () => setRole(r), r)
+                  )}
+                  {pillBtn("__custom__", role === "__custom__", () => setRole("__custom__"), "✏ Other role...")}
+                </div>
+                {role === "__custom__" && (
+                  <input
+                    placeholder="Type your role e.g. Biostatistician, Game Designer, Pilot..."
+                    value={customRole} onChange={e => setCustomRole(e.target.value)}
+                    style={{ ...inputStyle, marginTop: 10 }}
+                    autoFocus
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Seniority — shown after role selected */}
+            {industry && role && (role !== "__custom__" || customRole.trim()) && (
+              <div>
+                <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 10 }}>Seniority / level *</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {seniorityLevels.map(s =>
+                    pillBtn(s, seniority === s, () => setSeniority(s), s.charAt(0).toUpperCase() + s.slice(1))
+                  )}
+                </div>
+              </div>
+            )}
+
+            <Btn
+              onClick={() => setStep(2)}
+              disabled={!industry || !role || (role === "__custom__" && !customRole.trim()) || !seniority}
+              style={{ alignSelf: "flex-end" }}
+            >Next →</Btn>
           </div>
         </Card>
       )}
 
+      {/* STEP 2 — Resume + JD */}
       {step === 2 && (
         <Card>
-          <h3 style={{ color: COLORS.textPrimary, margin: "0 0 1.5rem", fontSize: 18 }}>Interview Settings</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+            <h3 style={{ color: COLORS.textPrimary, margin: 0, fontSize: 18 }}>Your Background</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, color: COLORS.textSecondary }}>{finalRole}</span>
+              <Badge color={COLORS.accent}>{seniority}</Badge>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
-              <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 10 }}>Technology Focus</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {TECH_STACKS.map(s => (
-                  <button key={s} onClick={() => setStack(s)} style={{
-                    padding: "7px 14px", borderRadius: 8, border: `1px solid ${stack === s ? COLORS.accent : COLORS.border}`,
-                    background: stack === s ? COLORS.accentSoft : "transparent", color: stack === s ? COLORS.accent : COLORS.textSecondary,
-                    fontSize: 12, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
-                  }}>{s}</button>
-                ))}
-              </div>
+              <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 6 }}>
+                Paste your CV / resume <span style={{ color: COLORS.textMuted }}>(optional but recommended)</span>
+              </label>
+              <textarea
+                placeholder="Paste your resume text, LinkedIn summary, or describe your experience, skills, and achievements..."
+                value={resumeText} onChange={e => setResumeText(e.target.value)} style={taStyle}
+              />
             </div>
             <div>
-              <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 10 }}>Seniority Level</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                {["junior", "mid", "senior", "staff"].map(s => (
-                  <button key={s} onClick={() => setSeniority(s)} style={{
-                    flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${seniority === s ? COLORS.accent : COLORS.border}`,
-                    background: seniority === s ? COLORS.accentSoft : "transparent", color: seniority === s ? COLORS.accent : COLORS.textSecondary,
-                    fontSize: 12, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize", transition: "all 0.15s",
-                  }}>{s}</button>
-                ))}
-              </div>
+              <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 6 }}>
+                Job description <span style={{ color: COLORS.textMuted }}>(optional — for hyper-targeted questions)</span>
+              </label>
+              <textarea
+                placeholder="Paste the job posting here for questions tailored to exactly what the employer is looking for..."
+                value={jd} onChange={e => setJd(e.target.value)} style={{ ...taStyle, minHeight: 80 }}
+              />
             </div>
+
+            {/* Voice toggle */}
             <div style={{ background: canVoice ? COLORS.greenSoft : COLORS.bgElevated, border: `1px solid ${canVoice ? COLORS.green + "44" : COLORS.border}`, borderRadius: 10, padding: "1rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <div style={{ color: COLORS.textPrimary, fontWeight: 600, fontSize: 14 }}>🎙 Voice Interview Mode</div>
-                  <div style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>AI speaks questions, you answer by voice</div>
+                  <div style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>AI speaks questions aloud, you answer by voice — with live speech analytics</div>
                 </div>
                 {canVoice ? <Badge color={COLORS.green}>Enabled</Badge> : <Badge color={COLORS.textMuted}>Starter+ only</Badge>}
               </div>
             </div>
+
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <Btn variant="ghost" onClick={() => setStep(1)}>← Back</Btn>
               <Btn onClick={analyzeResume} disabled={loading}>
-                {loading ? "Analyzing with AI..." : "Analyze Resume →"}
+                {loading ? "AI analyzing your profile..." : "Analyze & Prepare Questions →"}
               </Btn>
             </div>
           </div>
@@ -578,7 +881,7 @@ Job Description: ${jd || "Not provided"}`;
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <Btn variant="ghost" onClick={() => setStep(2)}>← Adjust settings</Btn>
-            <Btn variant="success" onClick={() => onBegin({ role, stack, seniority, analysis, voiceEnabled: canVoice })}>
+            <Btn variant="success" onClick={() => onBegin({ role: finalRole, industry, seniority, analysis, voiceEnabled: canVoice })}>
               🚀 Start Mock Interview
             </Btn>
           </div>
@@ -777,7 +1080,7 @@ function SpeechAnalyticsPanel({ text, listening, sessionAnalytics }) {
 
 // ─── SCREEN: MOCK INTERVIEW ───────────────────────────────────────────────────
 function InterviewScreen({ user, config, onComplete, onBack }) {
-  const questions = (SAMPLE_QUESTIONS[config.stack] || SAMPLE_QUESTIONS["default"]).slice(0, 5);
+  const questions = (SAMPLE_QUESTIONS[config.role] || SAMPLE_QUESTIONS["default"]).slice(0, 5);
   const [qIdx, setQIdx] = useState(0);
   const [answer, setAnswer] = useState("");
   const [answers, setAnswers] = useState([]);
