@@ -278,12 +278,20 @@ function AvaAvatar({ speaking, listening, thinking, size=120 }){
 
 // ─── CLAUDE API CALL ──────────────────────────────────────────────────────────
 async function callClaude(messages, model="claude-haiku-4-5-20251001", maxTokens=1200){
+  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  if(!apiKey) throw new Error("Missing VITE_ANTHROPIC_API_KEY");
   const res = await fetch("https://api.anthropic.com/v1/messages",{
     method:"POST",
-    headers:{"Content-Type":"application/json"},
+    headers:{
+      "Content-Type":"application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-allow-browser": "true",
+    },
     body:JSON.stringify({ model, max_tokens:maxTokens, messages }),
   });
   const data = await res.json();
+  if(data.error) throw new Error(data.error.message);
   const text = data.content?.find(b=>b.type==="text")?.text||"";
   return text;
 }
@@ -442,14 +450,14 @@ function AuthScreen({onEnter}){
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: "https://interviewai-ebon.vercel.app",
           queryParams: { access_type: "offline", prompt: "consent" },
         },
       });
       if (error) throw error;
-      // Browser redirects to Google — onEnter called via onAuthStateChange after redirect
+      // Browser redirects to Google then back — session handled by onAuthStateChange
     } catch (err) {
-      setError(err.message || "Google sign-in failed");
+      setError(err.message || "Google sign-in failed — check console for details");
       setLoading(false);
     }
   };
@@ -1801,14 +1809,13 @@ export default function App(){
 
   // ── Listen for Supabase auth changes (handles Google OAuth redirect) ──────
   useEffect(()=>{
-    // Check for existing session on page load
+    // Handle OAuth redirect — exchange code for session
     supabase.auth.getSession().then(({ data:{ session } })=>{
-      if(session?.user){ buildUser(session.user); }
+      if(session?.user) buildUser(session.user);
     });
 
-    // Subscribe to auth state changes (sign in, sign out, token refresh)
     const { data:{ subscription } } = supabase.auth.onAuthStateChange((event, session)=>{
-      if(event==="SIGNED_IN" && session?.user){
+      if((event==="SIGNED_IN" || event==="TOKEN_REFRESHED" || event==="INITIAL_SESSION") && session?.user){
         buildUser(session.user);
       } else if(event==="SIGNED_OUT"){
         setUser(null); setConfig(null); setResult(null); setScreen("auth");
