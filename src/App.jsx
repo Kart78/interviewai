@@ -311,18 +311,24 @@ function AuthScreen({onEnter}){
 
   const handleAuth = async()=>{
     if(!email.trim()||!password.trim()) return setError("Please fill in all fields");
+    if(tab==="signup"&&!name.trim()) return setError("Please enter your full name");
     setError(""); setLoading(true);
-    // Simulate auth — replace with supabase.auth.signInWithPassword / signUp
+    // ── TO CONNECT REAL AUTH: replace below with ──
+    // const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    // OR supabase.auth.signUp({ email, password, options: { data: { full_name: name } } })
     await new Promise(r=>setTimeout(r,900));
-    onEnter({ name:name||email.split("@")[0]||"User", email, plan:"starter", tokensUsed:34000, sessionsUsed:4 });
+    const displayName = tab==="signup" ? name.trim() : email.split("@")[0];
+    onEnter({ name:displayName, email:email.trim(), plan:"free", tokensUsed:0, sessionsUsed:0 });
     setLoading(false);
   };
 
   const handleGoogle = async()=>{
     setLoading(true);
-    // Replace with: supabase.auth.signInWithOAuth({ provider: 'google' })
-    await new Promise(r=>setTimeout(r,800));
-    onEnter({ name:"Google User", email:"user@gmail.com", plan:"free", tokensUsed:0, sessionsUsed:0 });
+    // ── TO CONNECT REAL GOOGLE AUTH: replace below with ──
+    // await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
+    await new Promise(r=>setTimeout(r,1000));
+    const mockName = "Demo User";
+    onEnter({ name:mockName, email:"demo@gmail.com", plan:"free", tokensUsed:0, sessionsUsed:0 });
     setLoading(false);
   };
 
@@ -1298,8 +1304,63 @@ Total fillers: ${result.totalFillers||0}`}],
   );
 }
 
+// ─── SCREEN: PRICING ─────────────────────────────────────────────────────────
+function PricingScreen({user,onBack}){
+  return(
+    <div style={{padding:"2rem",maxWidth:900,margin:"0 auto",fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:C.txt2,cursor:"pointer",fontSize:14,marginBottom:"1.5rem"}}>← Back</button>
+      <h2 style={{color:C.txt,textAlign:"center",marginBottom:8,fontSize:24}}>Choose your plan</h2>
+      <p style={{color:C.txt2,textAlign:"center",marginBottom:"2rem",fontSize:14}}>Upgrade anytime · Cancel anytime · Tokens reset monthly</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:16}}>
+        {Object.entries(PLANS).map(([key,plan])=>{
+          const isCurrent=user.plan===key;
+          const isPro=key==="pro";
+          return(
+            <div key={key} style={{background:C.card,border:`${isPro?2:1}px solid ${isPro?C.accent:isCurrent?C.borderHover:C.border}`,
+              borderRadius:16,padding:"1.5rem",position:"relative"}}>
+              {isPro&&<div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",
+                background:C.accent,color:"#fff",fontSize:11,fontWeight:700,padding:"3px 12px",borderRadius:99,whiteSpace:"nowrap"}}>MOST POPULAR</div>}
+              {isCurrent&&<div style={{position:"absolute",top:12,right:12}}><Badge color={C.green}>Current</Badge></div>}
+              <div style={{color:plan.color,fontWeight:700,fontSize:16,marginBottom:4}}>{plan.name}</div>
+              <div style={{color:C.txt,fontSize:28,fontWeight:800,marginBottom:4}}>
+                {plan.price===null?"Custom":plan.price===0?"Free":`$${plan.price}`}
+                {plan.price>0&&<span style={{fontSize:14,color:C.txt2,fontWeight:400}}>/mo</span>}
+              </div>
+              <div style={{borderTop:`1px solid ${C.border}`,margin:"14px 0",paddingTop:14}}>
+                {[
+                  `${plan.tokens===Infinity?"Unlimited":fmtN(plan.tokens)} tokens`,
+                  `${plan.sessions===999?"Unlimited":plan.sessions} sessions`,
+                  plan.voice?"✓ Voice + Ava coach":"✗ No voice",
+                  key!=="free"?"✓ Full scorecard":"✓ Basic report",
+                  key==="pro"||key==="enterprise"?"✓ Learning path":"",
+                  key==="enterprise"?"✓ Team dashboard":"",
+                ].filter(Boolean).map(f=>(
+                  <div key={f} style={{fontSize:13,color:f.startsWith("✗")?C.txt3:C.txt2,marginBottom:6}}>{f}</div>
+                ))}
+              </div>
+              <Btn variant={isCurrent?"ghost":isPro?"primary":"ghost"} disabled={isCurrent}
+                style={{width:"100%"}} onClick={()=>!isCurrent&&window.open("https://stripe.com","_blank")}>
+                {isCurrent?"Current plan":plan.price===null?"Contact us":"Upgrade →"}
+              </Btn>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{marginTop:"2rem",padding:"1.5rem",background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>
+        <h4 style={{color:C.txt,margin:"0 0 12px",fontSize:14}}>💡 Token top-ups — no plan change needed</h4>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          {[["100K tokens","$2"],["500K tokens","$8"],["1M tokens","$14"]].map(([t,p])=>(
+            <Btn key={t} variant="ghost" style={{fontSize:13}} onClick={()=>window.open("https://stripe.com","_blank")}>+ {t} for {p}</Btn>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── NAV ──────────────────────────────────────────────────────────────────────
-function Nav({user,screen,onNav}){
+function Nav({user,screen,onNav,onLogout}){
+  const [profileOpen,setProfileOpen]=useState(false);
   if(!user||screen==="auth")return null;
   const plan=PLANS[user.plan];
   const p=pct(user.tokensUsed,plan.tokens);
@@ -1313,7 +1374,7 @@ function Nav({user,screen,onNav}){
           <AvaAvatar speaking={false} listening={false} thinking={false} size={28}/>
           <span style={{color:C.txt,fontWeight:700,fontSize:15}}>InterviewAI</span>
         </div>
-        {["dashboard"].map(s=>(
+        {["dashboard","pricing"].map(s=>(
           <button key={s} onClick={()=>onNav(s)} style={{background:"none",border:"none",
             color:screen===s?C.txt:C.txt2,cursor:"pointer",fontSize:13,fontFamily:"inherit",
             fontWeight:screen===s?600:400,textTransform:"capitalize",padding:"4px 0"}}>
@@ -1331,9 +1392,73 @@ function Nav({user,screen,onNav}){
           </div>
         )}
         <Badge color={plan.color}>{plan.name}</Badge>
-        <div style={{width:30,height:30,borderRadius:"50%",background:C.accent,display:"flex",
-          alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff"}}>
-          {user.name.charAt(0).toUpperCase()}
+
+        {/* Profile avatar — clickable */}
+        <div style={{position:"relative"}}>
+          <div onClick={()=>setProfileOpen(o=>!o)}
+            style={{width:32,height:32,borderRadius:"50%",background:C.accent,display:"flex",
+              alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#fff",
+              cursor:"pointer",border:`2px solid ${profileOpen?C.accentHover:C.border}`,
+              transition:"border-color 0.15s",userSelect:"none"}}>
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+
+          {/* Dropdown */}
+          {profileOpen&&(
+            <div style={{position:"absolute",top:40,right:0,width:220,background:C.card,
+              border:`1px solid ${C.border}`,borderRadius:12,boxShadow:"0 8px 32px #00000066",
+              zIndex:200,overflow:"hidden"}}>
+              {/* User info */}
+              <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                  <div style={{width:36,height:36,borderRadius:"50%",background:C.accent,display:"flex",
+                    alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,color:"#fff",flexShrink:0}}>
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{overflow:"hidden"}}>
+                    <div style={{color:C.txt,fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.name}</div>
+                    <div style={{color:C.txt2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email}</div>
+                  </div>
+                </div>
+                <Badge color={plan.color}>{plan.name} Plan</Badge>
+              </div>
+
+              {/* Token usage inside dropdown */}
+              <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
+                <div style={{fontSize:11,color:C.txt2,marginBottom:6}}>Token usage this month</div>
+                <TokenBar used={user.tokensUsed} total={plan.tokens}/>
+              </div>
+
+              {/* Menu items */}
+              {[
+                {icon:"🎯", label:"Dashboard",    action:()=>{onNav("dashboard");setProfileOpen(false);}},
+                {icon:"💳", label:"Upgrade Plan", action:()=>{onNav("pricing");setProfileOpen(false);}},
+              ].map(item=>(
+                <button key={item.label} onClick={item.action}
+                  style={{width:"100%",padding:"11px 16px",background:"none",border:"none",
+                    color:C.txt2,fontSize:13,cursor:"pointer",fontFamily:"inherit",
+                    display:"flex",alignItems:"center",gap:10,textAlign:"left",
+                    transition:"background 0.15s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.elevated}
+                  onMouseLeave={e=>e.currentTarget.style.background="none"}>
+                  <span>{item.icon}</span><span>{item.label}</span>
+                </button>
+              ))}
+
+              {/* Sign out */}
+              <div style={{borderTop:`1px solid ${C.border}`}}>
+                <button onClick={()=>{onLogout();setProfileOpen(false);}}
+                  style={{width:"100%",padding:"11px 16px",background:"none",border:"none",
+                    color:C.red,fontSize:13,cursor:"pointer",fontFamily:"inherit",
+                    display:"flex",alignItems:"center",gap:10,textAlign:"left",
+                    transition:"background 0.15s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.redSoft}
+                  onMouseLeave={e=>e.currentTarget.style.background="none"}>
+                  <span>🚪</span><span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1342,6 +1467,7 @@ function Nav({user,screen,onNav}){
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App(){
+  // Always start on auth — never skip it
   const [screen,setScreen]=useState("auth");
   const [user,setUser]=useState(null);
   const [config,setConfig]=useState(null);
@@ -1350,15 +1476,17 @@ export default function App(){
   const handleEnter=u=>{ setUser({...u,sessionsUsed:u.sessionsUsed||0}); setScreen("dashboard"); };
   const handleBegin=cfg=>{ setConfig(cfg); setUser(u=>({...u,tokensUsed:(u.tokensUsed||0)+3500})); setScreen("interview"); };
   const handleComplete=r=>{ setResult(r); setUser(u=>({...u,tokensUsed:(u.tokensUsed||0)+r.scores.length*1200+3000,sessionsUsed:(u.sessionsUsed||0)+1})); setScreen("report"); };
+  const handleLogout=()=>{ setUser(null); setConfig(null); setResult(null); setScreen("auth"); };
 
   return(
     <div style={{fontFamily:"'DM Sans','Segoe UI',system-ui,sans-serif",background:C.bg,minHeight:"100vh",color:C.txt}}>
-      <Nav user={user} screen={screen} onNav={s=>setScreen(s)}/>
+      <Nav user={user} screen={screen} onNav={s=>setScreen(s)} onLogout={handleLogout}/>
       {screen==="auth"     &&<AuthScreen onEnter={handleEnter}/>}
-      {screen==="dashboard"&&<DashboardScreen user={user} onStart={()=>setScreen("setup")} onUpgrade={()=>setScreen("dashboard")}/>}
-      {screen==="setup"    &&<SetupScreen user={user} onBegin={handleBegin} onBack={()=>setScreen("dashboard")}/>}
+      {screen==="dashboard"&&user&&<DashboardScreen user={user} onStart={()=>setScreen("setup")} onUpgrade={()=>setScreen("pricing")}/>}
+      {screen==="setup"    &&user&&<SetupScreen user={user} onBegin={handleBegin} onBack={()=>setScreen("dashboard")}/>}
       {screen==="interview"&&config&&<InterviewScreen user={user} config={config} onComplete={handleComplete} onBack={()=>setScreen("dashboard")}/>}
       {screen==="report"   &&result&&<ReportScreen result={result} onDashboard={()=>setScreen("dashboard")} onRetry={()=>setScreen("setup")}/>}
+      {screen==="pricing"  &&user&&<PricingScreen user={user} onBack={()=>setScreen("dashboard")}/>}
     </div>
   );
 }
