@@ -1,5 +1,38 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
+// ─── SUPABASE CLIENT ──────────────────────────────────────────────────────────
+// Install: npm install @supabase/supabase-js
+// Then uncomment these 3 lines and remove the mock client below:
+//
+ import { createClient } from '@supabase/supabase-js';
+ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+ const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
+ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+//
+// ── MOCK CLIENT (remove once real Supabase is connected) ──────────────────────
+/*const supabase = {
+  auth: {
+    signInWithOAuth: async ({ provider, options }) => {
+      // Real call: redirects browser to Google consent screen
+      // Returns: { data: { url }, error }
+      console.log(`[mock] signInWithOAuth provider=${provider}`, options);
+      return { data: {}, error: null };
+    },
+    signInWithPassword: async ({ email, password }) => {
+      // Real call: returns session with user object
+      console.log("[mock] signInWithPassword", email);
+      return { data: { user: { id:"mock-id", email, user_metadata:{ full_name: email.split("@")[0] } } }, error: null };
+    },
+    signUp: async ({ email, password, options }) => {
+      console.log("[mock] signUp", email, options);
+      return { data: { user: { id:"mock-id", email, user_metadata: options?.data } }, error: null };
+    },
+    signOut: async () => ({ error: null }),
+    getSession: async () => ({ data: { session: null }, error: null }),
+    onAuthStateChange: (cb) => ({ data: { subscription: { unsubscribe: ()=>{} } } }),
+  }
+};*/
+
 // ─── DESIGN SYSTEM — World-class SaaS standards (Linear, Vercel, Stripe-inspired) ─
 // Font: Inter — #1 screen-optimized font per 2026 research
 // Sizes: WCAG AA compliant — body ≥16px, UI labels ≥13px, never below 12px
@@ -398,27 +431,52 @@ function AuthScreen({onEnter}){
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
 
-  const handleAuth = async()=>{
-    if(!email.trim()||!password.trim()) return setError("Please fill in all fields");
-    if(tab==="signup"&&!name.trim()) return setError("Please enter your full name");
+  const handleAuth = async () => {
+    if (!email.trim() || !password.trim()) return setError("Please fill in all fields");
+    if (tab === "signup" && !name.trim()) return setError("Please enter your full name");
     setError(""); setLoading(true);
-    // ── TO CONNECT REAL AUTH: replace below with ──
-    // const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    // OR supabase.auth.signUp({ email, password, options: { data: { full_name: name } } })
-    await new Promise(r=>setTimeout(r,900));
-    const displayName = tab==="signup" ? name.trim() : email.split("@")[0];
-    onEnter({ name:displayName, email:email.trim(), plan:"free", tokensUsed:0, sessionsUsed:0 });
+    try {
+      if (tab === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { data: { full_name: name.trim() } },
+        });
+        if (error) throw error;
+        if (data.user) {
+          onEnter({ name: name.trim(), email: email.trim(), plan: "free", tokensUsed: 0, sessionsUsed: 0 });
+        } else {
+          setError("Check your email to confirm your account, then sign in.");
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) throw error;
+        const displayName = data.user?.user_metadata?.full_name || email.split("@")[0];
+        onEnter({ name: displayName, email: email.trim(), plan: "free", tokensUsed: 0, sessionsUsed: 0, id: data.user?.id });
+      }
+    } catch (err) {
+      setError(err.message || "Authentication failed — please try again");
+    }
     setLoading(false);
   };
 
-  const handleGoogle = async()=>{
+  const handleGoogle = async () => {
     setLoading(true);
-    // ── TO CONNECT REAL GOOGLE AUTH: replace below with ──
-    // await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
-    await new Promise(r=>setTimeout(r,1000));
-    const mockName = "Demo User";
-    onEnter({ name:mockName, email:"demo@gmail.com", plan:"free", tokensUsed:0, sessionsUsed:0 });
-    setLoading(false);
+    setError("");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin,
+          queryParams: { access_type: "offline", prompt: "consent" },
+        },
+      });
+      if (error) throw error;
+      // Browser redirects to Google — onEnter called via onAuthStateChange after redirect
+    } catch (err) {
+      setError(err.message || "Google sign-in failed");
+      setLoading(false);
+    }
   };
 
   return(
@@ -1761,16 +1819,45 @@ function Nav({user,screen,onNav,onLogout}){
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App(){
-  // Always start on auth — never skip it
   const [screen,setScreen]=useState("auth");
   const [user,setUser]=useState(null);
   const [config,setConfig]=useState(null);
   const [result,setResult]=useState(null);
 
+  // ── Listen for Supabase auth changes (handles Google OAuth redirect) ──────
+  useEffect(()=>{
+    // Check for existing session on page load
+    supabase.auth.getSession().then(({ data:{ session } })=>{
+      if(session?.user){ buildUser(session.user); }
+    });
+
+    // Subscribe to auth state changes (sign in, sign out, token refresh)
+    const { data:{ subscription } } = supabase.auth.onAuthStateChange((event, session)=>{
+      if(event==="SIGNED_IN" && session?.user){
+        buildUser(session.user);
+      } else if(event==="SIGNED_OUT"){
+        setUser(null); setConfig(null); setResult(null); setScreen("auth");
+      }
+    });
+    return ()=> subscription.unsubscribe();
+  },[]);
+
+  const buildUser=(supaUser)=>{
+    const name = supaUser.user_metadata?.full_name
+      || supaUser.user_metadata?.name
+      || supaUser.email?.split("@")[0]
+      || "User";
+    setUser({ name, email:supaUser.email, plan:"free", tokensUsed:0, sessionsUsed:0, id:supaUser.id });
+    setScreen("dashboard");
+  };
+
   const handleEnter=u=>{ setUser({...u,sessionsUsed:u.sessionsUsed||0}); setScreen("dashboard"); };
   const handleBegin=cfg=>{ setConfig(cfg); setUser(u=>({...u,tokensUsed:(u.tokensUsed||0)+3500})); setScreen("interview"); };
   const handleComplete=r=>{ setResult(r); setUser(u=>({...u,tokensUsed:(u.tokensUsed||0)+r.scores.length*1200+3000,sessionsUsed:(u.sessionsUsed||0)+1})); setScreen("report"); };
-  const handleLogout=()=>{ setUser(null); setConfig(null); setResult(null); setScreen("auth"); };
+  const handleLogout=async()=>{
+    await supabase.auth.signOut();
+    setUser(null); setConfig(null); setResult(null); setScreen("auth");
+  };
 
   return(
     <div style={{fontFamily:F,background:C.bg,minHeight:"100vh",color:C.txt}}>
