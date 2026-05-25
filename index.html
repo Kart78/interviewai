@@ -6,18 +6,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="AI-powered mock interview coach with voice analytics, filler word detection, and personalized feedback for every tech role." />
     <meta name="theme-color" content="#0a0b0f" />
-
-    <!-- Open Graph -->
     <meta property="og:title" content="InterviewAI — Ace your next tech interview" />
     <meta property="og:description" content="AI mock interviews with real-time speech analytics, filler word detection, and personalized learning paths." />
     <meta property="og:type" content="website" />
-
     <title>InterviewAI — AI Mock Interview Coach</title>
 
+    <!-- Inter: #1 rated font for SaaS dashboards 2026 — screen-optimized, high x-height -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
     <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: #0a0b0f; font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif; }
+      *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+      :root {
+        --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        /* Type scale — WCAG AA minimum 16px body */
+        --text-xs:   12px;
+        --text-sm:   13px;
+        --text-base: 15px;   /* UI base */
+        --text-md:   16px;   /* Body reading text */
+        --text-lg:   18px;
+        --text-xl:   22px;
+        --text-2xl:  26px;
+        --text-3xl:  32px;
+        --text-4xl:  42px;
+        /* Weight scale */
+        --fw-normal:  400;
+        --fw-medium:  500;
+        --fw-semi:    600;
+        --fw-bold:    700;
+        --fw-xbold:   800;
+        /* Line heights */
+        --lh-tight:   1.25;
+        --lh-snug:    1.4;
+        --lh-normal:  1.6;   /* body text */
+        --lh-relaxed: 1.75;
+        /* Letter spacing */
+        --ls-tight:  -0.02em;
+        --ls-normal:  0em;
+        --ls-wide:    0.04em;
+        --ls-wider:   0.08em;
+      }
+
+      html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+
+      body {
+        background: #07080d;
+        font-family: var(--font);
+        font-size: var(--text-md);
+        font-weight: var(--fw-normal);
+        line-height: var(--lh-normal);
+        color: #e8e8f0;
+        /* Prevent layout shift from font loading */
+        font-display: swap;
+      }
+
       #root { min-height: 100vh; }
+
+      /* Global link reset */
+      a { color: inherit; text-decoration: none; }
+
+      /* Smooth scrolling */
+      html { scroll-behavior: smooth; }
+
+      /* Better button defaults */
+      button { font-family: var(--font); }
+
+      /* Better input defaults */
+      input, textarea, select { font-family: var(--font); }
+
+      /* Focus ring for accessibility */
+      :focus-visible { outline: 2px solid #7c6fff; outline-offset: 2px; border-radius: 4px; }
+
+      /* Scrollbar styling */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #2a2d3e; border-radius: 99px; }
+      ::-webkit-scrollbar-thumb:hover { background: #3d4060; }
     </style>
   </head>
   <body>
