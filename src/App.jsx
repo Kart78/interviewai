@@ -1,542 +1,399 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
-const COLORS = {
-  bg: "#0a0b0f",
-  bgCard: "#12141a",
-  bgElevated: "#1a1d26",
-  border: "#252836",
-  borderHover: "#3a3e52",
-  accent: "#6c63ff",
-  accentSoft: "#6c63ff22",
-  accentHover: "#8b84ff",
-  green: "#22c55e",
-  greenSoft: "#22c55e18",
-  amber: "#f59e0b",
-  amberSoft: "#f59e0b18",
-  red: "#ef4444",
-  redSoft: "#ef444418",
-  textPrimary: "#f0f0f8",
-  textSecondary: "#8b8fa8",
-  textMuted: "#4a4e66",
+// ─── COLORS ──────────────────────────────────────────────────────────────────
+const C = {
+  bg: "#07080d", card: "#0f1117", elevated: "#161820", border: "#1e2130",
+  borderHover: "#2e3248", accent: "#7c6fff", accentHover: "#9d94ff",
+  accentSoft: "#7c6fff1a", green: "#22c55e", greenSoft: "#22c55e18",
+  amber: "#f59e0b", amberSoft: "#f59e0b18", red: "#ef4444", redSoft: "#ef444418",
+  blue: "#3b82f6", blueSoft: "#3b82f618",
+  txt: "#eeeef5", txt2: "#7b7f9a", txt3: "#3d4060",
+  avaBase: "#1a1030", avaBorder: "#7c6fff44",
 };
 
-// ─── MOCK DATA & PLANS ───────────────────────────────────────────────────────
+// ─── PLANS ───────────────────────────────────────────────────────────────────
 const PLANS = {
-  free:    { name: "Free",    price: 0,  tokens: 50000,   sessions: 3,   voice: false, color: COLORS.textSecondary },
-  starter: { name: "Starter", price: 9,  tokens: 300000,  sessions: 15,  voice: true,  color: COLORS.green },
-  pro:     { name: "Pro",     price: 24, tokens: 1000000, sessions: 999, voice: true,  color: COLORS.accent },
-  enterprise: { name: "Enterprise", price: null, tokens: Infinity, sessions: 999, voice: true, color: COLORS.amber },
+  free:       { name:"Free",       price:0,    tokens:50000,   sessions:3,   voice:false, color:C.txt2 },
+  starter:    { name:"Starter",    price:9,    tokens:300000,  sessions:15,  voice:true,  color:C.green },
+  pro:        { name:"Pro",        price:24,   tokens:1000000, sessions:999, voice:true,  color:C.accent },
+  enterprise: { name:"Enterprise", price:null, tokens:Infinity,sessions:999, voice:true,  color:C.amber },
 };
 
-// ─── INDUSTRY CATEGORIES ─────────────────────────────────────────────────────
+// ─── INDUSTRIES & ROLES ──────────────────────────────────────────────────────
 const INDUSTRIES = [
-  { id: "technology",    label: "Technology & Software",  icon: "💻" },
-  { id: "business",      label: "Business & Finance",     icon: "📊" },
-  { id: "healthcare",    label: "Healthcare & Medical",   icon: "🏥" },
-  { id: "creative",      label: "Creative & Marketing",   icon: "🎨" },
-  { id: "education",     label: "Education & Research",   icon: "🎓" },
-  { id: "legal",         label: "Legal & Compliance",     icon: "⚖️" },
-  { id: "engineering",   label: "Engineering & Science",  icon: "⚙️" },
-  { id: "sales",         label: "Sales & Customer Success", icon: "🤝" },
-  { id: "operations",    label: "Operations & Logistics", icon: "📦" },
-  { id: "hr",            label: "HR & People Ops",        icon: "👥" },
+  {id:"technology", label:"Technology & Software", icon:"💻"},
+  {id:"business",   label:"Business & Finance",    icon:"📊"},
+  {id:"healthcare", label:"Healthcare & Medical",  icon:"🏥"},
+  {id:"creative",   label:"Creative & Marketing",  icon:"🎨"},
+  {id:"education",  label:"Education & Research",  icon:"🎓"},
+  {id:"legal",      label:"Legal & Compliance",    icon:"⚖️"},
+  {id:"engineering",label:"Engineering & Science", icon:"⚙️"},
+  {id:"sales",      label:"Sales & Customer Success",icon:"🤝"},
+  {id:"operations", label:"Operations & Logistics",icon:"📦"},
+  {id:"hr",         label:"HR & People Ops",       icon:"👥"},
 ];
 
 const ROLES_BY_INDUSTRY = {
-  technology: [
-    "Frontend Engineer", "Backend Engineer", "Full Stack Engineer",
-    "Data Scientist", "ML Engineer", "DevOps / Cloud Engineer",
-    "Mobile Developer", "Product Manager", "QA Engineer", "Security Engineer",
-  ],
-  business: [
-    "Financial Analyst", "Investment Banker", "Business Analyst",
-    "Management Consultant", "Strategy Manager", "CFO / Finance Director",
-    "Accountant / CPA", "Risk Manager", "Portfolio Manager", "Economist",
-  ],
-  healthcare: [
-    "Registered Nurse", "Physician / Doctor", "Pharmacist",
-    "Physical Therapist", "Healthcare Administrator", "Medical Researcher",
-    "Dentist", "Psychologist / Therapist", "Radiologist", "Surgeon",
-  ],
-  creative: [
-    "UX / UI Designer", "Graphic Designer", "Marketing Manager",
-    "Content Strategist", "Brand Manager", "Copywriter",
-    "Social Media Manager", "Art Director", "Video Producer", "SEO Specialist",
-  ],
-  education: [
-    "Teacher / Instructor", "University Lecturer", "Curriculum Designer",
-    "School Counselor", "Academic Researcher", "Education Administrator",
-    "Instructional Designer", "Librarian", "Tutor / Coach", "Department Head",
-  ],
-  legal: [
-    "Lawyer / Attorney", "Paralegal", "Compliance Officer",
-    "Legal Analyst", "Contract Manager", "Public Defender",
-    "Corporate Counsel", "Judge / Magistrate", "Legal Consultant", "Notary",
-  ],
-  engineering: [
-    "Mechanical Engineer", "Civil Engineer", "Electrical Engineer",
-    "Chemical Engineer", "Aerospace Engineer", "Structural Engineer",
-    "Environmental Engineer", "Industrial Engineer", "Biomedical Engineer", "Systems Engineer",
-  ],
-  sales: [
-    "Account Executive", "Sales Manager", "Customer Success Manager",
-    "Business Development Rep", "Sales Engineer", "VP of Sales",
-    "Retail Sales Associate", "Real Estate Agent", "Insurance Agent", "SDR / BDR",
-  ],
-  operations: [
-    "Operations Manager", "Supply Chain Manager", "Logistics Coordinator",
-    "Project Manager", "Scrum Master", "Program Manager",
-    "Procurement Manager", "Warehouse Manager", "Process Improvement Analyst", "COO",
-  ],
-  hr: [
-    "HR Generalist", "Recruiter / Talent Acquisition", "HR Business Partner",
-    "L&D Specialist", "Compensation & Benefits Manager", "HR Director",
-    "DEI Program Manager", "Payroll Specialist", "Org Development Consultant", "CHRO",
-  ],
+  technology:  ["Frontend Engineer","Backend Engineer","Full Stack Engineer","Data Scientist","ML Engineer","DevOps / Cloud Engineer","Mobile Developer","Product Manager","QA Engineer","Security Engineer"],
+  business:    ["Financial Analyst","Investment Banker","Business Analyst","Management Consultant","Strategy Manager","CFO / Finance Director","Accountant / CPA","Risk Manager","Portfolio Manager","Economist"],
+  healthcare:  ["Registered Nurse","Physician / Doctor","Pharmacist","Physical Therapist","Healthcare Administrator","Medical Researcher","Dentist","Psychologist / Therapist","Radiologist","Surgeon"],
+  creative:    ["UX / UI Designer","Graphic Designer","Marketing Manager","Content Strategist","Brand Manager","Copywriter","Social Media Manager","Art Director","Video Producer","SEO Specialist"],
+  education:   ["Teacher / Instructor","University Lecturer","Curriculum Designer","School Counselor","Academic Researcher","Education Administrator","Instructional Designer","Librarian","Tutor / Coach","Department Head"],
+  legal:       ["Lawyer / Attorney","Paralegal","Compliance Officer","Legal Analyst","Contract Manager","Public Defender","Corporate Counsel","Judge / Magistrate","Legal Consultant","Notary"],
+  engineering: ["Mechanical Engineer","Civil Engineer","Electrical Engineer","Chemical Engineer","Aerospace Engineer","Structural Engineer","Environmental Engineer","Industrial Engineer","Biomedical Engineer","Systems Engineer"],
+  sales:       ["Account Executive","Sales Manager","Customer Success Manager","Business Development Rep","Sales Engineer","VP of Sales","Retail Sales Associate","Real Estate Agent","Insurance Agent","SDR / BDR"],
+  operations:  ["Operations Manager","Supply Chain Manager","Logistics Coordinator","Project Manager","Scrum Master","Program Manager","Procurement Manager","Warehouse Manager","Process Improvement Analyst","COO"],
+  hr:          ["HR Generalist","Recruiter / Talent Acquisition","HR Business Partner","L&D Specialist","Compensation & Benefits Manager","HR Director","DEI Program Manager","Payroll Specialist","Org Development Consultant","CHRO"],
 };
 
-const SENIORITY_BY_INDUSTRY = {
-  technology:  ["intern", "junior", "mid", "senior", "staff / principal"],
-  business:    ["analyst", "associate", "manager", "director", "VP / C-suite"],
-  healthcare:  ["student / resident", "entry-level", "experienced", "senior", "chief / director"],
-  creative:    ["junior", "mid-level", "senior", "lead", "director / VP"],
-  education:   ["entry-level", "experienced", "senior", "lead", "head / dean"],
-  legal:       ["paralegal / associate", "junior attorney", "associate", "senior associate", "partner / director"],
-  engineering: ["graduate / intern", "junior", "mid-level", "senior", "principal / director"],
-  sales:       ["SDR / entry", "account exec", "senior AE", "manager", "director / VP"],
-  operations:  ["coordinator", "specialist", "manager", "senior manager", "director / VP"],
-  hr:          ["coordinator", "generalist", "manager", "senior manager", "director / CHRO"],
+const SENIORITY = {
+  technology:  ["Intern","Junior","Mid","Senior","Staff / Principal"],
+  business:    ["Analyst","Associate","Manager","Director","VP / C-Suite"],
+  healthcare:  ["Student / Resident","Entry-Level","Experienced","Senior","Chief / Director"],
+  creative:    ["Junior","Mid-Level","Senior","Lead","Director / VP"],
+  education:   ["Entry-Level","Experienced","Senior","Lead","Head / Dean"],
+  legal:       ["Paralegal / Associate","Junior Attorney","Associate","Senior Associate","Partner / Director"],
+  engineering: ["Graduate / Intern","Junior","Mid-Level","Senior","Principal / Director"],
+  sales:       ["SDR / Entry","Account Exec","Senior AE","Manager","Director / VP"],
+  operations:  ["Coordinator","Specialist","Manager","Senior Manager","Director / VP"],
+  hr:          ["Coordinator","Generalist","Manager","Senior Manager","Director / CHRO"],
 };
 
-const SAMPLE_QUESTIONS = {
-  // ── Technology ──
-  "Frontend Engineer": [
-    "Explain the virtual DOM and how React uses it for performance.",
-    "What are React hooks and why were they introduced?",
-    "How would you optimize a slow React application?",
-    "Explain the difference between controlled and uncontrolled components.",
-    "Walk me through how you'd implement a custom hook for data fetching.",
-  ],
-  "Backend Engineer": [
-    "Explain the event loop in Node.js.",
-    "How would you design a rate limiter for an API?",
-    "What are the differences between SQL and NoSQL databases?",
-    "Explain REST vs GraphQL and when you'd choose each.",
-    "How do you handle database transactions to prevent race conditions?",
-  ],
-  "Data Scientist": [
-    "Walk me through how you would approach a new machine learning problem from scratch.",
-    "How do you handle class imbalance in a classification problem?",
-    "Explain the bias-variance tradeoff and how you manage it.",
-    "What's the difference between bagging and boosting?",
-    "Describe a time your model performed well in training but poorly in production.",
-  ],
-  "Product Manager": [
-    "How do you prioritize features when you have limited engineering resources?",
-    "Tell me about a product you shipped and what you'd do differently.",
-    "How do you measure the success of a product launch?",
-    "Walk me through how you'd design an onboarding flow for a new B2B product.",
-    "How do you handle disagreements between engineering and design?",
-  ],
-  // ── Business ──
-  "Financial Analyst": [
-    "Walk me through a DCF valuation and when you'd use it vs a comparable company analysis.",
-    "How do you build a three-statement financial model?",
-    "Explain the difference between EBITDA and free cash flow.",
-    "How would you evaluate whether a company should pursue an acquisition?",
-    "Tell me about a time you found a significant insight in a financial dataset.",
-  ],
-  "Business Analyst": [
-    "Describe your process for gathering and documenting business requirements.",
-    "How do you handle conflicting priorities from different stakeholders?",
-    "Walk me through how you would improve a process that has too many manual steps.",
-    "Tell me about a time your analysis changed a business decision.",
-    "How do you communicate complex data findings to non-technical stakeholders?",
-  ],
-  "Management Consultant": [
-    "How would you structure a problem around declining revenues for a retail client?",
-    "Walk me through a case: a grocery chain's profits have dropped 20% in a year.",
-    "How do you quickly build credibility with a client in a new industry?",
-    "Tell me about a time you had to deliver an unwelcome recommendation.",
-    "How do you manage workstreams across a team with competing deadlines?",
-  ],
-  // ── Healthcare ──
-  "Registered Nurse": [
-    "Describe how you prioritize patient care when you have multiple critical patients.",
-    "Tell me about a time you caught a potential medication error.",
-    "How do you communicate difficult news to a patient's family?",
-    "Describe your approach to maintaining patient dignity during personal care.",
-    "How do you handle a situation where you disagree with a physician's orders?",
-  ],
-  "Physician / Doctor": [
-    "Walk me through how you approach a diagnostic workup for a patient with chest pain.",
-    "Describe a challenging case and how you handled uncertainty in the diagnosis.",
-    "How do you explain a complex diagnosis to a patient with low health literacy?",
-    "Tell me about a time you had to make a difficult decision under time pressure.",
-    "How do you stay current with the latest clinical guidelines and research?",
-  ],
-  "Psychologist / Therapist": [
-    "How do you establish therapeutic rapport with a new client?",
-    "Describe your approach to treatment planning for a client with comorbid conditions.",
-    "How do you handle a situation where a client is not making progress?",
-    "What is your approach to maintaining professional boundaries?",
-    "Tell me about a time you had to break confidentiality and how you handled it.",
-  ],
-  // ── Creative ──
-  "UX / UI Designer": [
-    "Walk me through your design process from discovery to handoff.",
-    "Tell me about a design decision you made based on user research findings.",
-    "How do you handle feedback from stakeholders that conflicts with your design rationale?",
-    "Describe a time you had to design for accessibility constraints.",
-    "How do you prioritize design debt alongside new feature work?",
-  ],
-  "Marketing Manager": [
-    "How do you build a go-to-market strategy for a new product launch?",
-    "Walk me through a campaign you ran from brief to results.",
-    "How do you measure the ROI of a brand awareness campaign?",
-    "Tell me about a time a campaign underperformed and what you did.",
-    "How do you balance short-term performance marketing with long-term brand building?",
-  ],
-  // ── Education ──
-  "Teacher / Instructor": [
-    "How do you differentiate instruction for students at varying ability levels?",
-    "Describe a lesson that didn't go well and what you changed for next time.",
-    "How do you engage students who are disruptive or disengaged?",
-    "Tell me about a time you collaborated with a colleague to improve outcomes.",
-    "How do you communicate student progress to parents effectively?",
-  ],
-  "Academic Researcher": [
-    "Describe your research methodology and how you ensure rigor.",
-    "How do you handle null or contradictory results in your research?",
-    "Walk me through how you've contributed to your field in the last year.",
-    "How do you manage a research project from proposal to publication?",
-    "Tell me about a time your research had a real-world impact.",
-  ],
-  // ── Legal ──
-  "Lawyer / Attorney": [
-    "How do you manage a heavy caseload with competing deadlines?",
-    "Describe how you prepare a client for a deposition.",
-    "Tell me about a case where you had to think creatively to find a legal argument.",
-    "How do you handle a client who wants to pursue a strategy you believe is inadvisable?",
-    "Walk me through your approach to due diligence on a major transaction.",
-  ],
-  "Compliance Officer": [
-    "How do you stay current with regulatory changes in your industry?",
-    "Describe how you build a compliance program from scratch.",
-    "Tell me about a time you identified a compliance risk before it became a problem.",
-    "How do you gain buy-in from business units resistant to compliance requirements?",
-    "Walk me through how you would respond to a regulatory audit.",
-  ],
-  // ── Engineering ──
-  "Mechanical Engineer": [
-    "Walk me through your design process for a mechanical component under stress.",
-    "How do you approach failure mode and effects analysis (FMEA)?",
-    "Describe a time a design failed and how you diagnosed and resolved it.",
-    "How do you balance performance requirements with manufacturing cost constraints?",
-    "Tell me about a project where you had to iterate rapidly on a physical prototype.",
-  ],
-  "Civil Engineer": [
-    "How do you approach a site assessment for a new construction project?",
-    "Describe your experience with structural load calculations.",
-    "How do you manage scope creep on a long-duration infrastructure project?",
-    "Tell me about a time you identified a safety risk on a project.",
-    "How do you coordinate with contractors, architects, and local authorities simultaneously?",
-  ],
-  // ── Sales ──
-  "Account Executive": [
-    "Walk me through your sales process from prospecting to close.",
-    "Tell me about your largest deal and how you closed it.",
-    "How do you handle a prospect who goes silent after a demo?",
-    "Describe how you build champions inside a target account.",
-    "How do you manage a pipeline with 50+ opportunities?",
-  ],
-  "Customer Success Manager": [
-    "How do you identify early signs of churn in your accounts?",
-    "Describe how you run a quarterly business review with an executive sponsor.",
-    "Tell me about a customer you saved from churning and how you did it.",
-    "How do you manage a portfolio of accounts with different needs and risk levels?",
-    "How do you drive expansion revenue without feeling pushy to the customer?",
-  ],
-  // ── Operations ──
-  "Project Manager": [
-    "How do you handle a project that is behind schedule and over budget?",
-    "Describe your approach to managing stakeholder expectations on a complex project.",
-    "How do you build a project plan when requirements are still unclear?",
-    "Tell me about a project that failed and what you learned.",
-    "How do you maintain team motivation during a long, difficult project?",
-  ],
-  "Operations Manager": [
-    "How do you identify and eliminate operational bottlenecks?",
-    "Describe a process improvement initiative you led and its outcomes.",
-    "How do you balance day-to-day operations with long-term improvement projects?",
-    "Tell me about a time you had to manage an operational crisis.",
-    "How do you build KPIs and dashboards to track operational health?",
-  ],
-  // ── HR ──
-  "HR Generalist": [
-    "How do you handle a complex employee relations issue while remaining impartial?",
-    "Describe your process for conducting a thorough and fair investigation.",
-    "How do you advise a manager who is struggling with a low-performing employee?",
-    "Tell me about a time you had to implement an unpopular policy change.",
-    "How do you balance employee advocacy with company interests?",
-  ],
-  "Recruiter / Talent Acquisition": [
-    "How do you source passive candidates for a hard-to-fill role?",
-    "Describe how you build a talent pipeline for roles you hire repeatedly.",
-    "How do you sell a candidate on a role when competing with a higher-paying offer?",
-    "Tell me about a time you made a mis-hire and what you learned.",
-    "How do you measure and improve quality-of-hire over time?",
-  ],
-  // ── Default fallback ──
-  "default": [
-    "Tell me about yourself and what draws you to this role.",
-    "Describe a challenging situation at work and how you handled it.",
-    "What is your greatest professional achievement so far?",
-    "How do you handle feedback or criticism from a manager?",
-    "Where do you see yourself in 3–5 years?",
-  ],
-};
-
-const TOKEN_COSTS = {
-  resume_parse: 2000,
-  question_gen: 1500,
-  answer_eval: 1200,
-  report_gen: 3000,
-};
+const FILLERS = ["um","uh","like","you know","basically","literally","actually","right","so","kind of","sort of","i mean","well","okay","yeah","hmm"];
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
-function fmtTokens(n) {
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
-  if (n >= 1000) return Math.round(n / 1000) + "K";
-  return n.toString();
+const fmtN = n => n>=1000000?(n/1000000).toFixed(1)+"M":n>=1000?Math.round(n/1000)+"K":String(n);
+const pct  = (u,t) => t===Infinity?0:Math.min(100,Math.round(u/t*100));
+const barC = p => p>=90?C.red:p>=70?C.amber:C.green;
+
+function analyzeSpeech(text){
+  if(!text?.trim()) return {fillerCount:0,fillerWords:{},wordCount:0,wpm:0,clarityScore:100,confidenceScore:100,vocabularyScore:100,paceLabel:"—",paceColor:C.txt3};
+  const lower=text.toLowerCase(), words=text.trim().split(/\s+/).filter(Boolean);
+  const wordCount=words.length;
+  const fillerWords={};let fillerCount=0;
+  FILLERS.forEach(f=>{const m=lower.match(new RegExp(`\\b${f}\\b`,"g"));if(m){fillerWords[f]=m.length;fillerCount+=m.length;}});
+  const fillerRate=wordCount>0?Math.round(fillerCount/wordCount*100):0;
+  const clarityScore=Math.max(0,100-fillerRate*3);
+  const secs=Math.max(10,wordCount/2.2);
+  const wpm=Math.round(wordCount/secs*60);
+  const paceLabel=wpm<100?"Too slow":wpm<=160?"Good pace":wpm<=200?"Slightly fast":"Too fast";
+  const paceColor=wpm>=100&&wpm<=160?C.green:C.amber;
+  const unique=new Set(words.map(w=>w.toLowerCase().replace(/[^a-z]/g,""))).size;
+  const vocabularyScore=Math.min(100,Math.round(unique/Math.max(1,wordCount)*100*1.8));
+  const hedges=["maybe","perhaps","might","possibly","not sure","i think","i guess","probably","somewhat"];
+  const hedgeCount=hedges.reduce((a,h)=>a+(lower.split(h).length-1),0);
+  const confidenceScore=Math.max(20,Math.min(100,100-hedgeCount*12-fillerRate*2));
+  return {fillerCount,fillerWords,wordCount,wpm,clarityScore,confidenceScore,vocabularyScore,paceLabel,paceColor,fillerRate};
 }
-function fmtPct(used, total) {
-  if (total === Infinity) return 0;
-  return Math.min(100, Math.round((used / total) * 100));
-}
-function tokenBarColor(pct) {
-  if (pct >= 90) return COLORS.red;
-  if (pct >= 70) return COLORS.amber;
-  return COLORS.green;
-}
 
-// ─── SUPABASE SCHEMA REFERENCE (shown in-app) ────────────────────────────────
-const SCHEMA_SQL = `-- Run this in your Supabase SQL editor
+// ─── AVA AVATAR COMPONENT ─────────────────────────────────────────────────────
+function AvaAvatar({ speaking, listening, thinking, size=120 }){
+  const [mouthH, setMouthH] = useState(2);
+  const [blink, setBlink] = useState(false);
+  const [eyeY, setEyeY] = useState(0);
+  const animRef = useRef(null);
+  const blinkRef = useRef(null);
 
-create table public.users_profile (
-  id uuid references auth.users primary key,
-  email text,
-  full_name text,
-  plan text default 'free',
-  tokens_used integer default 0,
-  tokens_allowance integer default 50000,
-  sessions_used integer default 0,
-  billing_date timestamptz,
-  stripe_customer_id text,
-  created_at timestamptz default now()
-);
+  // Mouth animation synced to speaking
+  useEffect(()=>{
+    if(speaking){
+      const animate=()=>{
+        setMouthH(Math.random()*14+2);
+        animRef.current=setTimeout(animate, 80+Math.random()*60);
+      };
+      animate();
+    } else {
+      clearTimeout(animRef.current);
+      setMouthH(2);
+    }
+    return ()=>clearTimeout(animRef.current);
+  },[speaking]);
 
-create table public.user_usage (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.users_profile(id),
-  feature text, -- 'resume_parse' | 'question_gen' | 'answer_eval' | 'report_gen'
-  tokens_consumed integer,
-  session_id uuid,
-  created_at timestamptz default now()
-);
+  // Listening pulse — subtle nod
+  useEffect(()=>{
+    if(listening){
+      const nod=()=>{ setEyeY(p=>p===0?1:0); blinkRef.current=setTimeout(nod,800); };
+      nod();
+    } else { clearTimeout(blinkRef.current); setEyeY(0); }
+    return ()=>clearTimeout(blinkRef.current);
+  },[listening]);
 
-create table public.interview_sessions (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.users_profile(id),
-  tech_stack text,
-  role text,
-  seniority text,
-  questions jsonb,
-  answers jsonb default '[]',
-  scores jsonb default '[]',
-  status text default 'active', -- active | completed
-  overall_score integer,
-  report jsonb,
-  created_at timestamptz default now()
-);
+  // Natural blink every 3-4s
+  useEffect(()=>{
+    const doBlink=()=>{
+      setBlink(true);
+      setTimeout(()=>setBlink(false),150);
+      blinkRef.current=setTimeout(doBlink,3000+Math.random()*2000);
+    };
+    blinkRef.current=setTimeout(doBlink,2000);
+    return ()=>clearTimeout(blinkRef.current);
+  },[]);
 
-create table public.transactions (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.users_profile(id),
-  stripe_payment_id text,
-  plan text,
-  amount integer,
-  status text,
-  created_at timestamptz default now()
-);
+  const r = size/2;
+  const cx = r, cy = r;
 
--- Row Level Security
-alter table public.users_profile enable row level security;
-alter table public.user_usage enable row level security;
-alter table public.interview_sessions enable row level security;
+  // Glow color
+  const glowColor = thinking?"#f59e0b":speaking?C.accent:listening?"#22c55e":C.accent;
 
-create policy "Users can read own profile"
-  on public.users_profile for select using (auth.uid() = id);
-create policy "Users can update own profile"
-  on public.users_profile for update using (auth.uid() = id);
-create policy "Users can read own usage"
-  on public.user_usage for select using (auth.uid() = user_id);
-create policy "Users can read own sessions"
-  on public.interview_sessions for select using (auth.uid() = user_id);
-
--- Monthly token reset function (schedule via pg_cron)
-create or replace function reset_monthly_tokens()
-returns void as $$
-  update public.users_profile
-  set tokens_used = 0
-  where date_trunc('month', billing_date) < date_trunc('month', now());
-$$ language sql;`;
-
-// ─── COMPONENTS ──────────────────────────────────────────────────────────────
-
-function TokenBar({ used, total, size = "md" }) {
-  const pct = fmtPct(used, total);
-  const color = tokenBarColor(pct);
-  const h = size === "sm" ? 4 : 8;
   return (
-    <div style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 12, color: COLORS.textSecondary }}>
-        <span>{fmtTokens(used)} used</span>
-        <span style={{ color }}>{total === Infinity ? "Unlimited" : `${pct}%`}</span>
-      </div>
-      <div style={{ height: h, background: COLORS.border, borderRadius: 99, overflow: "hidden" }}>
-        <div style={{
-          height: "100%", width: `${total === Infinity ? 10 : pct}%`,
-          background: color, borderRadius: 99,
-          transition: "width 0.6s cubic-bezier(.4,0,.2,1)",
-          boxShadow: `0 0 8px ${color}66`,
-        }} />
-      </div>
-      {pct >= 80 && total !== Infinity && (
-        <p style={{ fontSize: 11, color: COLORS.amber, marginTop: 4 }}>
-          ⚠ {pct >= 100 ? "Limit reached — upgrade to continue" : "Approaching limit — consider upgrading"}
-        </p>
-      )}
+    <div style={{ position:"relative", width:size, height:size, flexShrink:0 }}>
+      {/* Outer glow ring */}
+      <div style={{
+        position:"absolute", inset:-4, borderRadius:"50%",
+        background:`radial-gradient(circle, ${glowColor}30 0%, transparent 70%)`,
+        animation: speaking?"avaPulse 0.6s ease-in-out infinite alternate":listening?"avaPulse 1.2s ease-in-out infinite alternate":"none",
+      }}/>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ borderRadius:"50%", overflow:"hidden" }}>
+        <defs>
+          <radialGradient id="avaBg" cx="50%" cy="35%" r="70%">
+            <stop offset="0%" stopColor="#2a1a5e"/>
+            <stop offset="100%" stopColor="#07080d"/>
+          </radialGradient>
+          <radialGradient id="skinGrad" cx="50%" cy="40%" r="60%">
+            <stop offset="0%" stopColor="#fcd5b0"/>
+            <stop offset="100%" stopColor="#e8a87c"/>
+          </radialGradient>
+          <radialGradient id="hairGrad" cx="50%" cy="0%" r="80%">
+            <stop offset="0%" stopColor="#4a2800"/>
+            <stop offset="100%" stopColor="#1a0a00"/>
+          </radialGradient>
+          <filter id="soft">
+            <feGaussianBlur stdDeviation="0.5"/>
+          </filter>
+        </defs>
+
+        {/* Background */}
+        <circle cx={cx} cy={cy} r={r} fill="url(#avaBg)"/>
+
+        {/* Subtle grid lines for sci-fi look */}
+        {[0.3,0.5,0.7].map(f=>(
+          <circle key={f} cx={cx} cy={cy} r={r*f} fill="none" stroke={C.accent} strokeWidth="0.3" opacity="0.15"/>
+        ))}
+
+        {/* Neck */}
+        <rect x={cx-size*0.08} y={cy+size*0.22} width={size*0.16} height={size*0.18} rx={size*0.04} fill="url(#skinGrad)"/>
+
+        {/* Shoulders */}
+        <ellipse cx={cx} cy={cy+size*0.46} rx={size*0.38} ry={size*0.14} fill="#1a1a2e"/>
+
+        {/* Head */}
+        <ellipse cx={cx} cy={cy+size*0.04} rx={size*0.24} ry={size*0.27} fill="url(#skinGrad)"/>
+
+        {/* Hair */}
+        <ellipse cx={cx} cy={cy-size*0.14} rx={size*0.25} ry={size*0.16} fill="url(#hairGrad)"/>
+        <ellipse cx={cx-size*0.22} cy={cy+size*0.04} rx={size*0.05} ry={size*0.14} fill="url(#hairGrad)"/>
+        <ellipse cx={cx+size*0.22} cy={cy+size*0.04} rx={size*0.05} ry={size*0.14} fill="url(#hairGrad)"/>
+
+        {/* Eyes */}
+        {/* Left eye */}
+        <ellipse cx={cx-size*0.085} cy={cy+size*0.04+eyeY} rx={size*0.045} ry={blink?0.5:size*0.035} fill="#1a0a00"/>
+        <circle cx={cx-size*0.078} cy={cy+size*0.032+eyeY} r={size*0.012} fill="white" opacity="0.9"/>
+        {/* Right eye */}
+        <ellipse cx={cx+size*0.085} cy={cy+size*0.04+eyeY} rx={size*0.045} ry={blink?0.5:size*0.035} fill="#1a0a00"/>
+        <circle cx={cx+size*0.092} cy={cy+size*0.032+eyeY} r={size*0.012} fill="white" opacity="0.9"/>
+
+        {/* Eyebrows */}
+        <path d={`M${cx-size*0.115},${cy-size*0.01+eyeY} Q${cx-size*0.085},${cy-size*0.025+eyeY} ${cx-size*0.055},${cy-size*0.01+eyeY}`} fill="none" stroke="#3d1a00" strokeWidth={size*0.015} strokeLinecap="round"/>
+        <path d={`M${cx+size*0.055},${cy-size*0.01+eyeY} Q${cx+size*0.085},${cy-size*0.025+eyeY} ${cx+size*0.115},${cy-size*0.01+eyeY}`} fill="none" stroke="#3d1a00" strokeWidth={size*0.015} strokeLinecap="round"/>
+
+        {/* Nose */}
+        <path d={`M${cx},${cy+size*0.06} Q${cx+size*0.025},${cy+size*0.1} ${cx+size*0.035},${cy+size*0.12} Q${cx+size*0.01},${cy+size*0.125} ${cx-size*0.01},${cy+size*0.12}`} fill="none" stroke="#c88860" strokeWidth={size*0.012} strokeLinecap="round"/>
+
+        {/* Mouth — lip-synced */}
+        <ellipse cx={cx} cy={cy+size*0.165} rx={size*0.06} ry={mouthH/size*size*0.04+1} fill={mouthH>4?"#8b2020":"#c86060"}/>
+        {/* Upper lip */}
+        <path d={`M${cx-size*0.065},${cy+size*0.158} Q${cx-size*0.03},${cy+size*0.15} ${cx},${cy+size*0.152} Q${cx+size*0.03},${cy+size*0.15} ${cx+size*0.065},${cy+size*0.158}`} fill="none" stroke="#b05050" strokeWidth={size*0.01} strokeLinecap="round"/>
+
+        {/* Status indicator dot */}
+        <circle cx={cx+size*0.22} cy={cy-size*0.2} r={size*0.04}
+          fill={thinking?C.amber:speaking?C.accent:listening?C.green:C.txt3}
+          opacity="0.9"/>
+      </svg>
+
+      <style>{`
+        @keyframes avaPulse { from{opacity:0.5;transform:scale(1)} to{opacity:1;transform:scale(1.04)} }
+      `}</style>
     </div>
   );
 }
 
-function Badge({ children, color = COLORS.accent }) {
-  return (
-    <span style={{
-      display: "inline-block", padding: "2px 10px", borderRadius: 99,
-      background: color + "22", color, fontSize: 11, fontWeight: 600,
-      letterSpacing: "0.04em", textTransform: "uppercase",
-    }}>{children}</span>
-  );
+// ─── CLAUDE API CALL ──────────────────────────────────────────────────────────
+async function callClaude(messages, model="claude-haiku-4-5-20251001", maxTokens=1200){
+  const res = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ model, max_tokens:maxTokens, messages }),
+  });
+  const data = await res.json();
+  const text = data.content?.find(b=>b.type==="text")?.text||"";
+  return text;
 }
 
-function Card({ children, style = {}, onClick, hover = false }) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => hover && setHovered(true)}
-      onMouseLeave={() => hover && setHovered(false)}
-      style={{
-        background: COLORS.bgCard, border: `1px solid ${hovered ? COLORS.borderHover : COLORS.border}`,
-        borderRadius: 16, padding: "1.5rem",
-        cursor: onClick ? "pointer" : "default",
-        transition: "border-color 0.2s, transform 0.15s",
-        transform: hovered ? "translateY(-2px)" : "none",
-        ...style,
-      }}
-    >{children}</div>
-  );
+function parseJSON(text){
+  try{ return JSON.parse(text.replace(/```json|```/g,"").trim()); }
+  catch{ return null; }
 }
 
-function Btn({ children, onClick, variant = "primary", disabled = false, style = {} }) {
-  const [hov, setHov] = useState(false);
-  const styles = {
-    primary: { background: hov ? COLORS.accentHover : COLORS.accent, color: "#fff", border: "none" },
-    ghost: { background: hov ? COLORS.bgElevated : "transparent", color: COLORS.textPrimary, border: `1px solid ${COLORS.border}` },
-    danger: { background: hov ? "#dc2626" : COLORS.red, color: "#fff", border: "none" },
-    success: { background: hov ? "#16a34a" : COLORS.green, color: "#fff", border: "none" },
+// ─── SHARED UI ────────────────────────────────────────────────────────────────
+function Btn({children,onClick,variant="primary",disabled=false,style={}}){
+  const [hov,setHov]=useState(false);
+  const styles={
+    primary:{background:hov?C.accentHover:C.accent,color:"#fff",border:"none"},
+    ghost:{background:hov?C.elevated:"transparent",color:C.txt,border:`1px solid ${C.border}`},
+    danger:{background:hov?"#dc2626":C.red,color:"#fff",border:"none"},
+    success:{background:hov?"#16a34a":C.green,color:"#fff",border:"none"},
+    google:{background:hov?"#fff":C.elevated,color:C.txt,border:`1px solid ${C.border}`},
   };
-  return (
-    <button
-      onClick={onClick} disabled={disabled}
-      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{
-        padding: "10px 20px", borderRadius: 10, fontFamily: "inherit",
-        fontSize: 14, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.45 : 1, transition: "all 0.15s",
-        ...styles[variant], ...style,
-      }}
-    >{children}</button>
+  return(
+    <button onClick={onClick} disabled={disabled}
+      onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+      style={{padding:"10px 20px",borderRadius:10,fontFamily:"inherit",fontSize:14,fontWeight:600,
+        cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.45:1,transition:"all 0.15s",
+        ...styles[variant],...style}}>
+      {children}
+    </button>
   );
 }
 
-// ─── SCREEN: LANDING / AUTH ───────────────────────────────────────────────────
-function LandingScreen({ onEnter }) {
-  const [tab, setTab] = useState("signin");
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+function Card({children,style={},onClick}){
+  const [hov,setHov]=useState(false);
+  return(
+    <div onClick={onClick}
+      onMouseEnter={()=>onClick&&setHov(true)} onMouseLeave={()=>setHov(false)}
+      style={{background:C.card,border:`1px solid ${hov?C.borderHover:C.border}`,borderRadius:16,
+        padding:"1.5rem",cursor:onClick?"pointer":"default",transition:"border-color 0.2s",
+        transform:hov?"translateY(-1px)":"none",...style}}>
+      {children}
+    </div>
+  );
+}
 
-  const inputStyle = {
-    width: "100%", padding: "12px 16px", background: COLORS.bgElevated,
-    border: `1px solid ${COLORS.border}`, borderRadius: 10, color: COLORS.textPrimary,
-    fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+function Badge({children,color=C.accent}){
+  return <span style={{display:"inline-block",padding:"2px 10px",borderRadius:99,
+    background:color+"22",color,fontSize:11,fontWeight:600,letterSpacing:"0.04em",textTransform:"uppercase"}}>
+    {children}
+  </span>;
+}
+
+function TokenBar({used,total}){
+  const p=pct(used,total);
+  const color=barC(p);
+  return(
+    <div style={{width:"100%"}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontSize:12,color:C.txt2}}>
+        <span>{fmtN(used)} used</span>
+        <span style={{color}}>{total===Infinity?"Unlimited":`${p}%`}</span>
+      </div>
+      <div style={{height:6,background:C.border,borderRadius:99,overflow:"hidden"}}>
+        <div style={{height:"100%",width:`${total===Infinity?8:p}%`,background:color,borderRadius:99,
+          transition:"width 0.6s",boxShadow:`0 0 8px ${color}66`}}/>
+      </div>
+      {p>=80&&total!==Infinity&&<p style={{fontSize:11,color:C.amber,marginTop:4}}>⚠ {p>=100?"Limit reached":"Approaching limit"} — upgrade to continue</p>}
+    </div>
+  );
+}
+
+// ─── SCREEN: AUTH ─────────────────────────────────────────────────────────────
+function AuthScreen({onEnter}){
+  const [tab,setTab]=useState("signin");
+  const [email,setEmail]=useState("");
+  const [password,setPassword]=useState("");
+  const [name,setName]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [error,setError]=useState("");
+
+  const inp = {
+    width:"100%",padding:"12px 16px",background:C.elevated,
+    border:`1px solid ${C.border}`,borderRadius:10,color:C.txt,
+    fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box",
+    transition:"border-color 0.2s",
   };
 
-  return (
-    <div style={{
-      minHeight: "100vh", background: COLORS.bg, display: "flex", alignItems: "center",
-      justifyContent: "center", padding: "2rem", fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
-    }}>
-      {/* Ambient glow */}
-      <div style={{ position: "fixed", top: "20%", left: "50%", transform: "translateX(-50%)", width: 600, height: 300, background: `radial-gradient(ellipse, ${COLORS.accent}18 0%, transparent 70%)`, pointerEvents: "none" }} />
+  const handleAuth = async()=>{
+    if(!email.trim()||!password.trim()) return setError("Please fill in all fields");
+    setError(""); setLoading(true);
+    // Simulate auth — replace with supabase.auth.signInWithPassword / signUp
+    await new Promise(r=>setTimeout(r,900));
+    onEnter({ name:name||email.split("@")[0]||"User", email, plan:"starter", tokensUsed:34000, sessionsUsed:4 });
+    setLoading(false);
+  };
 
-      <div style={{ width: "100%", maxWidth: 440, position: "relative" }}>
+  const handleGoogle = async()=>{
+    setLoading(true);
+    // Replace with: supabase.auth.signInWithOAuth({ provider: 'google' })
+    await new Promise(r=>setTimeout(r,800));
+    onEnter({ name:"Google User", email:"user@gmail.com", plan:"free", tokensUsed:0, sessionsUsed:0 });
+    setLoading(false);
+  };
+
+  return(
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",
+      justifyContent:"center",padding:"2rem",fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+      {/* Ambient */}
+      <div style={{position:"fixed",top:"15%",left:"50%",transform:"translateX(-50%)",
+        width:600,height:300,background:`radial-gradient(ellipse,${C.accent}14 0%,transparent 70%)`,pointerEvents:"none"}}/>
+
+      <div style={{width:"100%",maxWidth:420,position:"relative"}}>
         {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-          <div style={{ width: 56, height: 56, borderRadius: 16, background: COLORS.accent, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 16 }}>🎯</div>
-          <h1 style={{ color: COLORS.textPrimary, fontSize: 28, fontWeight: 700, margin: 0 }}>InterviewAI</h1>
-          <p style={{ color: COLORS.textSecondary, fontSize: 14, marginTop: 8 }}>AI-powered mock interviews for every tech role</p>
+        <div style={{textAlign:"center",marginBottom:"2rem"}}>
+          <AvaAvatar speaking={false} listening={false} thinking={false} size={80}/>
+          <h1 style={{color:C.txt,fontSize:26,fontWeight:700,margin:"12px 0 4px"}}>InterviewAI</h1>
+          <p style={{color:C.txt2,fontSize:13}}>Meet <strong style={{color:C.accent}}>Ava</strong> — your personal AI interview coach</p>
         </div>
 
         <Card>
-          {/* Tab switcher */}
-          <div style={{ display: "flex", background: COLORS.bg, borderRadius: 10, padding: 4, marginBottom: "1.5rem" }}>
-            {["signin", "signup"].map(t => (
-              <button key={t} onClick={() => setTab(t)} style={{
-                flex: 1, padding: "8px", borderRadius: 8, border: "none", fontFamily: "inherit",
-                fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
-                background: tab === t ? COLORS.bgElevated : "transparent",
-                color: tab === t ? COLORS.textPrimary : COLORS.textSecondary,
-              }}>{t === "signin" ? "Sign In" : "Sign Up"}</button>
+          {/* Tab */}
+          <div style={{display:"flex",background:C.bg,borderRadius:10,padding:4,marginBottom:"1.25rem"}}>
+            {["signin","signup"].map(t=>(
+              <button key={t} onClick={()=>{setTab(t);setError("");}} style={{
+                flex:1,padding:"8px",borderRadius:8,border:"none",fontFamily:"inherit",
+                fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.15s",
+                background:tab===t?C.elevated:"transparent",color:tab===t?C.txt:C.txt2}}>
+                {t==="signin"?"Sign In":"Sign Up"}
+              </button>
             ))}
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {tab === "signup" && (
-              <input placeholder="Full name" value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
-            )}
-            <input placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
-            <input placeholder="Password" type="password" style={inputStyle} />
-            <Btn onClick={() => onEnter({ name: name || "Alex Chen", email: email || "alex@example.com", plan: "starter", tokensUsed: 34000 })} style={{ width: "100%", padding: "13px" }}>
-              {tab === "signin" ? "Sign In →" : "Create Account →"}
+          {/* Google OAuth */}
+          <Btn variant="google" onClick={handleGoogle} disabled={loading}
+            style={{width:"100%",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+            <svg width="18" height="18" viewBox="0 0 48 48">
+              <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.6 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.1-4z"/>
+              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.8 18.9 13 24 13c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>
+              <path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.3 35.5 26.8 36 24 36c-5.3 0-9.8-3.5-11.4-8.3l-6.5 5C9.5 39.4 16.2 44 24 44z"/>
+              <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.8l6.2 5.2C41.2 35.5 44 30.1 44 24c0-1.3-.1-2.7-.4-4z"/>
+            </svg>
+            {loading?"Connecting...":"Continue with Google"}
+          </Btn>
+
+          {/* Divider */}
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+            <div style={{flex:1,height:1,background:C.border}}/>
+            <span style={{color:C.txt3,fontSize:12}}>or</span>
+            <div style={{flex:1,height:1,background:C.border}}/>
+          </div>
+
+          {/* Fields */}
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {tab==="signup"&&<input placeholder="Full name" value={name} onChange={e=>setName(e.target.value)} style={inp}/>}
+            <input placeholder="Email address" value={email} onChange={e=>setEmail(e.target.value)} style={inp} type="email"/>
+            <input placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} style={inp} type="password"
+              onKeyDown={e=>e.key==="Enter"&&handleAuth()}/>
+            {error&&<p style={{color:C.red,fontSize:12,margin:0}}>{error}</p>}
+            <Btn onClick={handleAuth} disabled={loading} style={{width:"100%",padding:"13px"}}>
+              {loading?"Please wait...":tab==="signin"?"Sign In →":"Create Account →"}
             </Btn>
           </div>
 
-          <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
-            <p style={{ color: COLORS.textMuted, fontSize: 12 }}>
-              {tab === "signup" ? "Free plan — no credit card required" : "Don't have an account? "}
-              {tab === "signin" && <span style={{ color: COLORS.accent, cursor: "pointer" }} onClick={() => setTab("signup")}>Sign up free</span>}
-            </p>
-          </div>
+          <p style={{color:C.txt3,fontSize:12,textAlign:"center",marginTop:"1rem"}}>
+            {tab==="signup"?"Free plan — no credit card required":"No account? "}
+            {tab==="signin"&&<span style={{color:C.accent,cursor:"pointer"}} onClick={()=>setTab("signup")}>Sign up free</span>}
+          </p>
         </Card>
 
-        {/* Feature pills */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: "1.5rem" }}>
-          {["🎙 Voice interviews", "📊 AI scoring", "🧠 Personalized prep", "💡 Real-time hints"].map(f => (
-            <span key={f} style={{ fontSize: 12, color: COLORS.textSecondary, background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 99, padding: "4px 12px" }}>{f}</span>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginTop:"1.25rem"}}>
+          {["🎙 Voice interviews","📊 Real-time scoring","🤖 Ava AI coach","💡 Live coaching","🌍 All industries"].map(f=>(
+            <span key={f} style={{fontSize:12,color:C.txt2,background:C.card,border:`1px solid ${C.border}`,borderRadius:99,padding:"4px 12px"}}>{f}</span>
           ))}
         </div>
       </div>
@@ -545,88 +402,76 @@ function LandingScreen({ onEnter }) {
 }
 
 // ─── SCREEN: DASHBOARD ────────────────────────────────────────────────────────
-function DashboardScreen({ user, onStart, onUpgrade, onSchema }) {
-  const plan = PLANS[user.plan];
-  const pct = fmtPct(user.tokensUsed, plan.tokens);
-
-  const stats = [
-    { label: "Sessions this month", value: user.sessionsUsed || 4, icon: "🎯" },
-    { label: "Avg score", value: "74%", icon: "📊" },
-    { label: "Top skill", value: "React", icon: "⭐" },
-    { label: "Weakest area", value: "System design", icon: "📈" },
+function DashboardScreen({user,onStart,onUpgrade}){
+  const plan=PLANS[user.plan];
+  const p=pct(user.tokensUsed,plan.tokens);
+  const stats=[
+    {label:"Sessions this month",value:user.sessionsUsed||4,icon:"🎯"},
+    {label:"Avg score",value:"74%",icon:"📊"},
+    {label:"Top industry",value:"Business",icon:"⭐"},
+    {label:"Next goal",value:"System Design",icon:"📈"},
   ];
-
-  const recentSessions = [
-    { role: "Financial Analyst", industry: "Business & Finance", score: 82, date: "Today", status: "completed" },
-    { role: "Registered Nurse", industry: "Healthcare", score: 71, date: "Yesterday", status: "completed" },
-    { role: "UX / UI Designer", industry: "Creative & Marketing", score: 65, date: "3 days ago", status: "completed" },
+  const recent=[
+    {role:"Financial Analyst",industry:"Business & Finance",score:82,date:"Today"},
+    {role:"Registered Nurse",industry:"Healthcare",score:71,date:"Yesterday"},
+    {role:"UX Designer",industry:"Creative",score:65,date:"3 days ago"},
   ];
-
-  return (
-    <div style={{ padding: "2rem", maxWidth: 1100, margin: "0 auto" }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: 16 }}>
-        <div>
-          <h2 style={{ color: COLORS.textPrimary, margin: 0, fontSize: 24, fontWeight: 700 }}>Good morning, {user.name.split(" ")[0]} 👋</h2>
-          <p style={{ color: COLORS.textSecondary, margin: "4px 0 0", fontSize: 14 }}>Ready to ace your next interview?</p>
+  return(
+    <div style={{padding:"2rem",maxWidth:1100,margin:"0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"2rem",flexWrap:"wrap",gap:16}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <AvaAvatar speaking={false} listening={false} thinking={false} size={56}/>
+          <div>
+            <h2 style={{color:C.txt,margin:0,fontSize:22,fontWeight:700}}>Good morning, {user.name.split(" ")[0]} 👋</h2>
+            <p style={{color:C.txt2,margin:"2px 0 0",fontSize:13}}>Ava is ready for your next mock interview</p>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <Btn variant="ghost" onClick={onSchema}>📄 View DB Schema</Btn>
-          <Btn onClick={onStart}>+ New Interview</Btn>
-        </div>
+        <Btn onClick={onStart}>+ New Interview with Ava</Btn>
       </div>
 
-      {/* Token usage card */}
-      <Card style={{ marginBottom: "1.5rem", background: pct >= 80 ? `${COLORS.amber}08` : COLORS.bgCard, borderColor: pct >= 80 ? `${COLORS.amber}44` : COLORS.border }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 20 }}>⚡</span>
+      {/* Token card */}
+      <Card style={{marginBottom:"1.5rem",borderColor:p>=80?`${C.amber}44`:C.border}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:20}}>⚡</span>
             <div>
-              <div style={{ color: COLORS.textPrimary, fontWeight: 600, fontSize: 15 }}>Token Usage</div>
-              <div style={{ color: COLORS.textSecondary, fontSize: 12 }}>Resets in 18 days</div>
+              <div style={{color:C.txt,fontWeight:600,fontSize:15}}>Token Usage</div>
+              <div style={{color:C.txt2,fontSize:12}}>Resets in 18 days</div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
             <Badge color={plan.color}>{plan.name}</Badge>
-            {user.plan !== "pro" && user.plan !== "enterprise" && (
-              <Btn onClick={onUpgrade} style={{ padding: "6px 14px", fontSize: 12 }}>Upgrade ↗</Btn>
-            )}
+            {user.plan!=="pro"&&user.plan!=="enterprise"&&<Btn onClick={onUpgrade} style={{padding:"6px 14px",fontSize:12}}>Upgrade ↗</Btn>}
           </div>
         </div>
-        <TokenBar used={user.tokensUsed} total={plan.tokens} />
-        <div style={{ display: "flex", gap: 20, marginTop: 12, flexWrap: "wrap" }}>
-          {Object.entries(TOKEN_COSTS).map(([k, v]) => (
-            <div key={k} style={{ fontSize: 11, color: COLORS.textMuted }}>
-              <span style={{ color: COLORS.textSecondary }}>{k.replace("_", " ")}: </span>{fmtTokens(v)} tokens
-            </div>
-          ))}
-        </div>
+        <TokenBar used={user.tokensUsed} total={plan.tokens}/>
       </Card>
 
-      {/* Stats grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: "1.5rem" }}>
-        {stats.map(s => (
-          <Card key={s.label} style={{ padding: "1.2rem" }}>
-            <div style={{ fontSize: 24, marginBottom: 8 }}>{s.icon}</div>
-            <div style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 22 }}>{s.value}</div>
-            <div style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>{s.label}</div>
+      {/* Stats */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginBottom:"1.5rem"}}>
+        {stats.map(s=>(
+          <Card key={s.label} style={{padding:"1.2rem"}}>
+            <div style={{fontSize:22,marginBottom:6}}>{s.icon}</div>
+            <div style={{color:C.txt,fontWeight:700,fontSize:22}}>{s.value}</div>
+            <div style={{color:C.txt2,fontSize:12,marginTop:3}}>{s.label}</div>
           </Card>
         ))}
       </div>
 
-      {/* Recent sessions */}
+      {/* Recent */}
       <Card>
-        <h3 style={{ color: COLORS.textPrimary, margin: "0 0 1rem", fontSize: 16, fontWeight: 600 }}>Recent Sessions</h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {recentSessions.map((s, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: COLORS.bgElevated, borderRadius: 10, flexWrap: "wrap", gap: 8 }}>
+        <h3 style={{color:C.txt,margin:"0 0 1rem",fontSize:16,fontWeight:600}}>Recent Sessions</h3>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {recent.map((s,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+              padding:"12px 16px",background:C.elevated,borderRadius:10,flexWrap:"wrap",gap:8}}>
               <div>
-                <div style={{ color: COLORS.textPrimary, fontWeight: 500, fontSize: 14 }}>{s.role}</div>
-                <div style={{ color: COLORS.textSecondary, fontSize: 12 }}>{s.industry} · {s.date}</div>
+                <div style={{color:C.txt,fontWeight:500,fontSize:14}}>{s.role}</div>
+                <div style={{color:C.txt2,fontSize:12}}>{s.industry} · {s.date}</div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: s.score >= 80 ? COLORS.green : s.score >= 60 ? COLORS.amber : COLORS.red }}>{s.score}%</div>
-                <Btn variant="ghost" style={{ padding: "5px 12px", fontSize: 12 }} onClick={onStart}>Retry</Btn>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{fontSize:20,fontWeight:700,color:s.score>=80?C.green:s.score>=60?C.amber:C.red}}>{s.score}%</div>
+                <Btn variant="ghost" style={{padding:"5px 12px",fontSize:12}} onClick={onStart}>Retry</Btn>
               </div>
             </div>
           ))}
@@ -636,254 +481,184 @@ function DashboardScreen({ user, onStart, onUpgrade, onSchema }) {
   );
 }
 
-// ─── SCREEN: SETUP INTERVIEW ──────────────────────────────────────────────────
-function SetupScreen({ user, onBegin, onBack }) {
-  const [step, setStep] = useState(1);
-  const [resumeText, setResumeText] = useState("");
-  const [role, setRole] = useState("");
-  const [customRole, setCustomRole] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [seniority, setSeniority] = useState("");
-  const [jd, setJd] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [analysis, setAnalysis] = useState(null);
+// ─── SCREEN: SETUP ────────────────────────────────────────────────────────────
+function SetupScreen({user,onBegin,onBack}){
+  const [step,setStep]=useState(1);
+  const [resumeText,setResumeText]=useState("");
+  const [role,setRole]=useState("");
+  const [customRole,setCustomRole]=useState("");
+  const [industry,setIndustry]=useState("");
+  const [seniority,setSeniority]=useState("");
+  const [jd,setJd]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [analysis,setAnalysis]=useState(null);
 
-  const plan = PLANS[user.plan];
-  const canVoice = plan.voice;
-  const seniorityLevels = industry ? SENIORITY_BY_INDUSTRY[industry] : ["entry-level", "mid-level", "senior", "lead", "director"];
-  const finalRole = role === "__custom__" ? customRole : role;
+  const plan=PLANS[user.plan];
+  const canVoice=plan.voice;
+  const senLevels=industry?SENIORITY[industry]:["Entry-Level","Mid-Level","Senior","Lead","Director"];
+  const finalRole=role==="__custom__"?customRole:role;
 
-  const analyzeResume = async () => {
-    if (!finalRole.trim()) return;
+  const analyzeResume=async()=>{
+    if(!finalRole.trim())return;
     setLoading(true);
-    try {
-      const prompt = `You are an expert career coach and interviewer. Analyze this candidate's background for the target role, then return ONLY a valid JSON object (no markdown, no extra text):
-{
-  "skills": ["skill1", "skill2", "skill3"],
-  "gaps": ["gap1", "gap2"],
-  "strengths": ["strength1", "strength2"],
-  "focus_areas": ["area1", "area2", "area3"],
-  "readiness_score": 72,
-  "interview_types": ["Behavioral", "Situational", "Technical"]
-}
+    try{
+      const text=await callClaude([{role:"user",content:`You are an expert career coach. Analyze this candidate's background for the target role. Return ONLY valid JSON, no other text:
+{"skills":["skill1","skill2","skill3"],"gaps":["gap1","gap2"],"strengths":["strength1","strength2"],"focus_areas":["area1","area2","area3"],"readiness_score":72,"interview_types":["Behavioral","Situational","Technical"],"ava_intro":"Hi! I'm Ava, your AI interview coach. I've reviewed your background and I'm excited to help you prepare for the ${finalRole} role. I can see you have solid strengths, but let's work on a few key areas together. Ready to start?"}
 
-Resume/Background: ${resumeText || "Not provided"}
+Resume: ${resumeText||"Not provided"}
 Target Role: ${finalRole}
 Industry: ${industry}
 Seniority: ${seniority}
-Job Description: ${jd || "Not provided"}`;
-
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-      const data = await res.json();
-      const text = data.content?.find(b => b.type === "text")?.text || "{}";
-      const clean = text.replace(/\`\`\`json|\`\`\`/g, "").trim();
-      setAnalysis(JSON.parse(clean));
-      setStep(3);
-    } catch {
-      const ind = INDUSTRIES.find(i => i.id === industry);
+Job Description: ${jd||"Not provided"}`}]);
+      const parsed=parseJSON(text);
+      if(parsed){ setAnalysis(parsed); setStep(3); }
+      else throw new Error("parse");
+    }catch{
       setAnalysis({
-        skills: ["Communication", "Problem solving", "Domain knowledge"],
-        gaps: ["Leadership experience", "Industry certifications"],
-        strengths: ["Relevant background", "Strong motivation"],
-        focus_areas: ["Behavioral", "Situational", "Role-specific knowledge"],
-        readiness_score: 65,
-        interview_types: ["Behavioral", "Situational", "Technical"],
+        skills:["Communication","Problem-solving","Domain knowledge"],
+        gaps:["Leadership depth","Industry certifications"],
+        strengths:["Motivated candidate","Relevant experience"],
+        focus_areas:["Behavioral","Situational","Role-specific knowledge"],
+        readiness_score:65,
+        interview_types:["Behavioral","Situational","Technical"],
+        ava_intro:`Hi! I'm Ava, your AI interview coach. I've reviewed your background for the ${finalRole} role and I'm ready to help you prepare. Let's focus on your key areas and get you interview-ready!`,
       });
       setStep(3);
     }
     setLoading(false);
   };
 
-  const taStyle = {
-    width: "100%", minHeight: 120, padding: "12px 16px",
-    background: COLORS.bgElevated, border: `1px solid ${COLORS.border}`,
-    borderRadius: 10, color: COLORS.textPrimary, fontSize: 13,
-    fontFamily: "inherit", resize: "vertical", outline: "none", boxSizing: "border-box",
-  };
-  const inputStyle = { ...taStyle, minHeight: "auto", height: 44, resize: "none" };
-
-  const pillBtn = (val, selected, onClick, label) => (
-    <button key={val} onClick={onClick} style={{
-      padding: "7px 14px", borderRadius: 8,
-      border: `1px solid ${selected ? COLORS.accent : COLORS.border}`,
-      background: selected ? COLORS.accentSoft : "transparent",
-      color: selected ? COLORS.accent : COLORS.textSecondary,
-      fontSize: 12, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
-    }}>{label || val}</button>
+  const ta={width:"100%",minHeight:110,padding:"12px 16px",background:C.elevated,
+    border:`1px solid ${C.border}`,borderRadius:10,color:C.txt,fontSize:13,
+    fontFamily:"inherit",resize:"vertical",outline:"none",boxSizing:"border-box"};
+  const inp={...ta,minHeight:"auto",height:44,resize:"none"};
+  const pill=(val,sel,onClick,label)=>(
+    <button key={val} onClick={onClick} style={{padding:"7px 14px",borderRadius:8,
+      border:`1px solid ${sel?C.accent:C.border}`,
+      background:sel?C.accentSoft:"transparent",color:sel?C.accent:C.txt2,
+      fontSize:12,cursor:"pointer",fontFamily:"inherit",transition:"all 0.15s"}}>
+      {label||val}
+    </button>
   );
 
-  return (
-    <div style={{ padding: "2rem", maxWidth: 720, margin: "0 auto" }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", color: COLORS.textSecondary, cursor: "pointer", fontSize: 14, marginBottom: "1.5rem", padding: 0 }}>← Back</button>
+  return(
+    <div style={{padding:"2rem",maxWidth:720,margin:"0 auto",fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:C.txt2,cursor:"pointer",fontSize:14,marginBottom:"1.5rem",padding:0}}>← Back</button>
 
-      {/* Step indicators */}
-      <div style={{ display: "flex", gap: 8, marginBottom: "2rem" }}>
-        {["Industry & Role", "Your Background", "AI Analysis", "Start!"].map((label, i) => (
-          <div key={i} style={{ flex: 1, textAlign: "center" }}>
-            <div style={{ height: 4, borderRadius: 99, background: step > i + 1 ? COLORS.accent : step === i + 1 ? COLORS.accent : COLORS.border, marginBottom: 6, transition: "background 0.3s" }} />
-            <span style={{ fontSize: 11, color: step >= i + 1 ? COLORS.textSecondary : COLORS.textMuted }}>{label}</span>
+      {/* Steps */}
+      <div style={{display:"flex",gap:8,marginBottom:"2rem"}}>
+        {["Industry & Role","Your Background","AI Analysis","Start!"].map((label,i)=>(
+          <div key={i} style={{flex:1,textAlign:"center"}}>
+            <div style={{height:4,borderRadius:99,background:step>i+1?C.accent:step===i+1?C.accent:C.border,marginBottom:5,transition:"background 0.3s"}}/>
+            <span style={{fontSize:11,color:step>=i+1?C.txt2:C.txt3}}>{label}</span>
           </div>
         ))}
       </div>
 
-      {/* STEP 1 — Industry + Role + Seniority */}
-      {step === 1 && (
+      {step===1&&(
         <Card>
-          <h3 style={{ color: COLORS.textPrimary, margin: "0 0 1.5rem", fontSize: 18 }}>What are you interviewing for?</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-            {/* Industry picker */}
+          <h3 style={{color:C.txt,margin:"0 0 1.5rem",fontSize:18}}>What are you interviewing for?</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:20}}>
             <div>
-              <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 10 }}>Industry *</label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 8 }}>
-                {INDUSTRIES.map(ind => (
-                  <button key={ind.id} onClick={() => { setIndustry(ind.id); setRole(""); setSeniority(""); }} style={{
-                    display: "flex", alignItems: "center", gap: 8, padding: "10px 14px",
-                    borderRadius: 10, border: `1px solid ${industry === ind.id ? COLORS.accent : COLORS.border}`,
-                    background: industry === ind.id ? COLORS.accentSoft : COLORS.bgElevated,
-                    color: industry === ind.id ? COLORS.accent : COLORS.textSecondary,
-                    fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", textAlign: "left",
-                  }}>
+              <label style={{color:C.txt2,fontSize:13,display:"block",marginBottom:10}}>Industry *</label>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(165px,1fr))",gap:8}}>
+                {INDUSTRIES.map(ind=>(
+                  <button key={ind.id} onClick={()=>{setIndustry(ind.id);setRole("");setSeniority("");}} style={{
+                    display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:10,
+                    border:`1px solid ${industry===ind.id?C.accent:C.border}`,
+                    background:industry===ind.id?C.accentSoft:C.elevated,
+                    color:industry===ind.id?C.accent:C.txt2,
+                    fontSize:12,cursor:"pointer",fontFamily:"inherit",transition:"all 0.15s",textAlign:"left"}}>
                     <span>{ind.icon}</span><span>{ind.label}</span>
                   </button>
                 ))}
               </div>
             </div>
-
-            {/* Role picker — shown after industry selected */}
-            {industry && (
+            {industry&&(
               <div>
-                <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 10 }}>Role *</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {(ROLES_BY_INDUSTRY[industry] || []).map(r =>
-                    pillBtn(r, role === r, () => setRole(r), r)
-                  )}
-                  {pillBtn("__custom__", role === "__custom__", () => setRole("__custom__"), "✏ Other role...")}
+                <label style={{color:C.txt2,fontSize:13,display:"block",marginBottom:10}}>Role *</label>
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                  {(ROLES_BY_INDUSTRY[industry]||[]).map(r=>pill(r,role===r,()=>setRole(r),r))}
+                  {pill("__custom__",role==="__custom__",()=>setRole("__custom__"),"✏ Other role...")}
                 </div>
-                {role === "__custom__" && (
-                  <input
-                    placeholder="Type your role e.g. Biostatistician, Game Designer, Pilot..."
-                    value={customRole} onChange={e => setCustomRole(e.target.value)}
-                    style={{ ...inputStyle, marginTop: 10 }}
-                    autoFocus
-                  />
-                )}
+                {role==="__custom__"&&<input placeholder="Type your role..." value={customRole} onChange={e=>setCustomRole(e.target.value)} style={{...inp,marginTop:10}} autoFocus/>}
               </div>
             )}
-
-            {/* Seniority — shown after role selected */}
-            {industry && role && (role !== "__custom__" || customRole.trim()) && (
+            {industry&&role&&(role!=="__custom__"||customRole.trim())&&(
               <div>
-                <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 10 }}>Seniority / level *</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {seniorityLevels.map(s =>
-                    pillBtn(s, seniority === s, () => setSeniority(s), s.charAt(0).toUpperCase() + s.slice(1))
-                  )}
+                <label style={{color:C.txt2,fontSize:13,display:"block",marginBottom:10}}>Seniority / Level *</label>
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                  {senLevels.map(s=>pill(s,seniority===s,()=>setSeniority(s),s))}
                 </div>
               </div>
             )}
-
-            <Btn
-              onClick={() => setStep(2)}
-              disabled={!industry || !role || (role === "__custom__" && !customRole.trim()) || !seniority}
-              style={{ alignSelf: "flex-end" }}
-            >Next →</Btn>
+            <Btn onClick={()=>setStep(2)} disabled={!industry||!role||(role==="__custom__"&&!customRole.trim())||!seniority} style={{alignSelf:"flex-end"}}>Next →</Btn>
           </div>
         </Card>
       )}
 
-      {/* STEP 2 — Resume + JD */}
-      {step === 2 && (
+      {step===2&&(
         <Card>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-            <h3 style={{ color: COLORS.textPrimary, margin: 0, fontSize: 18 }}>Your Background</h3>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 12, color: COLORS.textSecondary }}>{finalRole}</span>
-              <Badge color={COLORS.accent}>{seniority}</Badge>
-            </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.5rem"}}>
+            <h3 style={{color:C.txt,margin:0,fontSize:18}}>Your Background</h3>
+            <div style={{display:"flex",gap:8}}><Badge color={C.accent}>{finalRole}</Badge><Badge color={C.txt2}>{seniority}</Badge></div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
             <div>
-              <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 6 }}>
-                Paste your CV / resume <span style={{ color: COLORS.textMuted }}>(optional but recommended)</span>
-              </label>
-              <textarea
-                placeholder="Paste your resume text, LinkedIn summary, or describe your experience, skills, and achievements..."
-                value={resumeText} onChange={e => setResumeText(e.target.value)} style={taStyle}
-              />
+              <label style={{color:C.txt2,fontSize:13,display:"block",marginBottom:6}}>Paste your CV / resume <span style={{color:C.txt3}}>(optional but recommended)</span></label>
+              <textarea placeholder="Paste your resume text, LinkedIn summary, or describe your experience and skills..." value={resumeText} onChange={e=>setResumeText(e.target.value)} style={ta}/>
             </div>
             <div>
-              <label style={{ color: COLORS.textSecondary, fontSize: 13, display: "block", marginBottom: 6 }}>
-                Job description <span style={{ color: COLORS.textMuted }}>(optional — for hyper-targeted questions)</span>
-              </label>
-              <textarea
-                placeholder="Paste the job posting here for questions tailored to exactly what the employer is looking for..."
-                value={jd} onChange={e => setJd(e.target.value)} style={{ ...taStyle, minHeight: 80 }}
-              />
+              <label style={{color:C.txt2,fontSize:13,display:"block",marginBottom:6}}>Job description <span style={{color:C.txt3}}>(optional — for hyper-targeted questions)</span></label>
+              <textarea placeholder="Paste the job posting here..." value={jd} onChange={e=>setJd(e.target.value)} style={{...ta,minHeight:70}}/>
             </div>
-
-            {/* Voice toggle */}
-            <div style={{ background: canVoice ? COLORS.greenSoft : COLORS.bgElevated, border: `1px solid ${canVoice ? COLORS.green + "44" : COLORS.border}`, borderRadius: 10, padding: "1rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{background:canVoice?C.greenSoft:C.elevated,border:`1px solid ${canVoice?C.green+"44":C.border}`,borderRadius:10,padding:"1rem"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
-                  <div style={{ color: COLORS.textPrimary, fontWeight: 600, fontSize: 14 }}>🎙 Voice Interview Mode</div>
-                  <div style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>AI speaks questions aloud, you answer by voice — with live speech analytics</div>
+                  <div style={{color:C.txt,fontWeight:600,fontSize:14}}>🎙 Voice Interview Mode</div>
+                  <div style={{color:C.txt2,fontSize:12,marginTop:4}}>Ava speaks questions, you answer by voice — with live speech analytics</div>
                 </div>
-                {canVoice ? <Badge color={COLORS.green}>Enabled</Badge> : <Badge color={COLORS.textMuted}>Starter+ only</Badge>}
+                {canVoice?<Badge color={C.green}>Enabled</Badge>:<Badge color={C.txt3}>Starter+ only</Badge>}
               </div>
             </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <Btn variant="ghost" onClick={() => setStep(1)}>← Back</Btn>
-              <Btn onClick={analyzeResume} disabled={loading}>
-                {loading ? "AI analyzing your profile..." : "Analyze & Prepare Questions →"}
-              </Btn>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <Btn variant="ghost" onClick={()=>setStep(1)}>← Back</Btn>
+              <Btn onClick={analyzeResume} disabled={loading}>{loading?"Ava is analyzing your profile...":"Analyze & Prepare →"}</Btn>
             </div>
           </div>
         </Card>
       )}
 
-      {step === 3 && analysis && (
+      {step===3&&analysis&&(
         <Card>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-            <h3 style={{ color: COLORS.textPrimary, margin: 0, fontSize: 18 }}>AI Analysis Complete ✨</h3>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 32, fontWeight: 700, color: analysis.readiness_score >= 70 ? COLORS.green : COLORS.amber }}>{analysis.readiness_score}%</div>
-              <div style={{ fontSize: 11, color: COLORS.textSecondary }}>Readiness</div>
+          <div style={{display:"flex",gap:16,alignItems:"flex-start",marginBottom:"1.25rem"}}>
+            <AvaAvatar speaking={false} listening={false} thinking={false} size={64}/>
+            <div style={{flex:1}}>
+              <div style={{color:C.accent,fontSize:12,fontWeight:600,marginBottom:6}}>AVA SAYS</div>
+              <p style={{color:C.txt,fontSize:14,lineHeight:1.6,margin:0,fontStyle:"italic"}}>"{analysis.ava_intro}"</p>
+            </div>
+            <div style={{textAlign:"center",flexShrink:0}}>
+              <div style={{fontSize:30,fontWeight:800,color:analysis.readiness_score>=70?C.green:C.amber}}>{analysis.readiness_score}%</div>
+              <div style={{fontSize:11,color:C.txt2}}>Readiness</div>
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: "1.5rem" }}>
-            <div style={{ background: COLORS.bgElevated, borderRadius: 10, padding: "1rem" }}>
-              <div style={{ color: COLORS.green, fontWeight: 600, fontSize: 12, marginBottom: 8 }}>✓ STRENGTHS</div>
-              {(analysis.strengths || []).map(s => <div key={s} style={{ color: COLORS.textSecondary, fontSize: 13, marginBottom: 4 }}>• {s}</div>)}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:"1.25rem"}}>
+            <div style={{background:C.greenSoft,borderRadius:10,padding:"0.85rem"}}>
+              <div style={{color:C.green,fontWeight:600,fontSize:11,marginBottom:6}}>✓ STRENGTHS</div>
+              {analysis.strengths?.map(s=><div key={s} style={{color:C.txt2,fontSize:12,marginBottom:3}}>• {s}</div>)}
             </div>
-            <div style={{ background: COLORS.bgElevated, borderRadius: 10, padding: "1rem" }}>
-              <div style={{ color: COLORS.red, fontWeight: 600, fontSize: 12, marginBottom: 8 }}>⚠ GAPS TO COVER</div>
-              {(analysis.gaps || []).map(g => <div key={g} style={{ color: COLORS.textSecondary, fontSize: 13, marginBottom: 4 }}>• {g}</div>)}
-            </div>
-          </div>
-          <div style={{ background: COLORS.accentSoft, borderRadius: 10, padding: "1rem", marginBottom: "1.5rem" }}>
-            <div style={{ color: COLORS.accent, fontWeight: 600, fontSize: 12, marginBottom: 8 }}>🎯 TODAY'S FOCUS AREAS</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {(analysis.focus_areas || []).map(f => <Badge key={f}>{f}</Badge>)}
+            <div style={{background:C.redSoft,borderRadius:10,padding:"0.85rem"}}>
+              <div style={{color:C.red,fontWeight:600,fontSize:11,marginBottom:6}}>⚠ GAPS TO COVER</div>
+              {analysis.gaps?.map(g=><div key={g} style={{color:C.txt2,fontSize:12,marginBottom:3}}>• {g}</div>)}
             </div>
           </div>
-          <div style={{ background: COLORS.bgElevated, borderRadius: 10, padding: "0.75rem 1rem", marginBottom: "1.5rem", fontSize: 12, color: COLORS.textMuted }}>
-            ⚡ ~{fmtTokens(TOKEN_COSTS.resume_parse + TOKEN_COSTS.question_gen)} tokens used for this analysis
+          <div style={{background:C.accentSoft,borderRadius:10,padding:"0.85rem",marginBottom:"1.25rem"}}>
+            <div style={{color:C.accent,fontWeight:600,fontSize:11,marginBottom:6}}>🎯 TODAY'S FOCUS AREAS</div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{analysis.focus_areas?.map(f=><Badge key={f}>{f}</Badge>)}</div>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <Btn variant="ghost" onClick={() => setStep(2)}>← Adjust settings</Btn>
-            <Btn variant="success" onClick={() => onBegin({ role: finalRole, industry, seniority, analysis, voiceEnabled: canVoice })}>
-              🚀 Start Mock Interview
-            </Btn>
+          <div style={{display:"flex",justifyContent:"space-between"}}>
+            <Btn variant="ghost" onClick={()=>setStep(2)}>← Adjust</Btn>
+            <Btn variant="success" onClick={()=>onBegin({role:finalRole,industry,seniority,analysis,voiceEnabled:canVoice})}>🚀 Start with Ava</Btn>
           </div>
         </Card>
       )}
@@ -891,691 +666,601 @@ Job Description: ${jd || "Not provided"}`;
   );
 }
 
-// ─── SPEECH ANALYTICS ENGINE ─────────────────────────────────────────────────
-const FILLER_WORDS = ["um","uh","like","you know","basically","literally","actually","right","so","kind of","sort of","i mean","well","okay","yeah"];
+// ─── SCREEN: INTERVIEW ────────────────────────────────────────────────────────
+function InterviewScreen({user,config,onComplete,onBack}){
+  const [questions,setQuestions]=useState([]);
+  const [qIdx,setQIdx]=useState(0);
+  const [answer,setAnswer]=useState("");
+  const [answers,setAnswers]=useState([]);
+  const [scores,setScores]=useState([]);
+  const [speechStats,setSpeechStats]=useState([]);
+  const [feedback,setFeedback]=useState(null);
+  const [coachTip,setCoachTip]=useState("");
+  const [loadingQ,setLoadingQ]=useState(true);
+  const [loadingEval,setLoadingEval]=useState(false);
+  const [listening,setListening]=useState(false);
+  const [avaSpeaking,setAvaSpeaking]=useState(false);
+  const [avaListening,setAvaListening]=useState(false);
+  const [avaThinking,setAvaThinking]=useState(false);
+  const [interimTranscript,setInterimTranscript]=useState("");
+  const [timeLeft,setTimeLeft]=useState(120);
+  const [timerActive,setTimerActive]=useState(false);
+  const [waveBars,setWaveBars]=useState(Array(20).fill(4));
+  const [showAnalytics,setShowAnalytics]=useState(true);
+  const [avaMessage,setAvaMessage]=useState("");
 
-function analyzeSpeech(text) {
-  if (!text.trim()) return { fillerCount: 0, fillerWords: {}, wordCount: 0, sentenceCount: 0, wpm: 0, clarityScore: 100, paceLabel: "—", paceColor: COLORS.textMuted, fillerRate: 0, longestPause: 0, uniqueWords: 0, vocabularyScore: 100 };
-  const lower = text.toLowerCase();
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  const wordCount = words.length;
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 2);
-  const sentenceCount = Math.max(1, sentences.length);
+  const recognitionRef=useRef(null);
+  const timerRef=useRef(null);
+  const waveRef=useRef(null);
 
-  // Filler detection
-  const fillerWords = {};
-  let fillerCount = 0;
-  FILLER_WORDS.forEach(f => {
-    const regex = new RegExp(`\\b${f}\\b`, "gi");
-    const matches = lower.match(regex);
-    if (matches && matches.length > 0) {
-      fillerWords[f] = matches.length;
-      fillerCount += matches.length;
+  const liveText=answer+(interimTranscript?" "+interimTranscript:"");
+  const currentQ=questions[qIdx]||"";
+  const isLast=qIdx===questions.length-1&&questions.length>0;
+
+  // ── Generate questions dynamically via Claude ──
+  useEffect(()=>{
+    generateQuestions();
+  },[]);
+
+  const generateQuestions=async()=>{
+    setLoadingQ(true);
+    setAvaThinking(true);
+    setAvaMessage("Preparing your personalized interview questions...");
+    try{
+      const text=await callClaude([{role:"user",content:`You are Ava, an expert AI interview coach. Generate exactly 5 interview questions for this candidate. Return ONLY a JSON array of 5 strings, no other text.
+
+Role: ${config.role}
+Industry: ${config.industry}
+Seniority: ${config.seniority}
+Key gaps to probe: ${config.analysis?.gaps?.join(", ")||"general competencies"}
+Focus areas: ${config.analysis?.focus_areas?.join(", ")||"behavioral, situational"}
+Resume context: ${config.analysis?.skills?.join(", ")||"general background"}
+
+Requirements:
+- Mix behavioral (STAR-method), situational, and role-specific technical questions
+- Match the seniority level (${config.seniority})
+- Be specific to ${config.role} in ${config.industry}
+- Questions should feel like a real interview, not a quiz
+- Progress from rapport-building to challenging`}]);
+      const parsed=parseJSON(text);
+      if(Array.isArray(parsed)&&parsed.length>0){
+        setQuestions(parsed);
+        setAvaMessage(`Great! I've prepared ${parsed.length} personalized questions for you. Let's begin!`);
+      } else throw new Error();
+    }catch{
+      setQuestions([
+        `Tell me about yourself and what draws you to the ${config.role} role.`,
+        `Describe a challenging situation in your career and how you handled it.`,
+        `What is your greatest professional achievement as a ${config.seniority} professional?`,
+        `How do you stay current with developments in your field?`,
+        `Where do you see yourself in 3-5 years and how does this role fit?`,
+      ]);
+      setAvaMessage("I've prepared 5 questions tailored to your profile. Let's get started!");
     }
-  });
-
-  const fillerRate = wordCount > 0 ? Math.round((fillerCount / wordCount) * 100) : 0;
-  const clarityScore = Math.max(0, 100 - fillerRate * 3);
-
-  // Pace (assume avg speaking is ~130wpm, estimate from word count vs 120s)
-  const estimatedSecs = Math.max(10, wordCount / 2.2);
-  const wpm = Math.round((wordCount / estimatedSecs) * 60);
-  let paceLabel, paceColor;
-  if (wpm < 100) { paceLabel = "Too slow"; paceColor = COLORS.amber; }
-  else if (wpm <= 160) { paceLabel = "Good pace"; paceColor = COLORS.green; }
-  else if (wpm <= 200) { paceLabel = "Slightly fast"; paceColor = COLORS.amber; }
-  else { paceLabel = "Too fast"; paceColor = COLORS.red; }
-
-  // Vocabulary richness
-  const uniqueWords = new Set(words.map(w => w.toLowerCase().replace(/[^a-z]/g, ""))).size;
-  const vocabularyScore = Math.min(100, Math.round((uniqueWords / Math.max(1, wordCount)) * 100 * 1.8));
-
-  // Confidence signals: short sentences, passive voice, hedging
-  const hedgeWords = ["maybe","perhaps","might","possibly","not sure","i think","i guess","probably","somewhat"];
-  const hedgeCount = hedgeWords.reduce((acc, h) => acc + (lower.split(h).length - 1), 0);
-  const confidenceScore = Math.max(20, Math.min(100, 100 - hedgeCount * 12 - fillerRate * 2));
-
-  return { fillerCount, fillerWords, wordCount, sentenceCount, wpm, clarityScore, paceLabel, paceColor, fillerRate, uniqueWords, vocabularyScore, confidenceScore };
-}
-
-function SpeechAnalyticsPanel({ text, listening, sessionAnalytics }) {
-  const analytics = analyzeSpeech(text);
-
-  const MiniGauge = ({ label, value, color, suffix = "" }) => (
-    <div style={{ flex: 1, minWidth: 80 }}>
-      <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 700, color, lineHeight: 1 }}>{value}<span style={{ fontSize: 11, fontWeight: 400, color: COLORS.textMuted }}>{suffix}</span></div>
-      <div style={{ height: 3, background: COLORS.border, borderRadius: 99, marginTop: 5, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${Math.min(100, value)}%`, background: color, borderRadius: 99, transition: "width 0.4s" }} />
-      </div>
-    </div>
-  );
-
-  // Highlight filler words in transcript
-  const highlightedText = () => {
-    if (!text) return null;
-    let result = text;
-    const sorted = FILLER_WORDS.slice().sort((a, b) => b.length - a.length);
-    sorted.forEach(f => {
-      const regex = new RegExp(`(\\b${f}\\b)`, "gi");
-      result = result.replace(regex, `__FILLER__$1__END__`);
-    });
-    return result.split(/(__FILLER__|__END__)/).map((part, i) => {
-      if (part === "__FILLER__" || part === "__END__") return null;
-      const isFiller = result.includes(`__FILLER__${part}__END__`) && FILLER_WORDS.some(f => part.toLowerCase() === f);
-      return isFiller
-        ? <mark key={i} style={{ background: `${COLORS.amber}44`, color: COLORS.amber, borderRadius: 3, padding: "0 2px" }}>{part}</mark>
-        : <span key={i}>{part}</span>;
-    });
+    setAvaThinking(false);
+    setLoadingQ(false);
   };
 
-  const topFillers = Object.entries(analytics.fillerWords).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  // ── Timer ──
+  useEffect(()=>{
+    if(timerActive&&timeLeft>0){ timerRef.current=setTimeout(()=>setTimeLeft(t=>t-1),1000); }
+    return()=>clearTimeout(timerRef.current);
+  },[timerActive,timeLeft]);
 
-  return (
-    <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "1rem", marginTop: "0.75rem" }}>
-      {/* Live indicator */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.75rem" }}>
-        {listening && <div style={{ width: 8, height: 8, borderRadius: "50%", background: COLORS.red, animation: "pulse 1s infinite" }} />}
-        <span style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-          {listening ? "Live speech analytics" : "Speech analytics"}
-        </span>
-        {analytics.wordCount > 0 && (
-          <span style={{ fontSize: 11, color: COLORS.textMuted, marginLeft: "auto" }}>{analytics.wordCount} words · {analytics.sentenceCount} sentences</span>
-        )}
-      </div>
+  // ── Waveform animation ──
+  useEffect(()=>{
+    let id;
+    if(listening){ const anim=()=>{ setWaveBars(Array(20).fill(0).map(()=>Math.floor(Math.random()*28)+4)); id=setTimeout(anim,90); }; anim(); }
+    else{ setWaveBars(Array(20).fill(4)); }
+    return()=>clearTimeout(id);
+  },[listening]);
 
-      {/* 4 gauges */}
-      <div style={{ display: "flex", gap: 16, marginBottom: "0.75rem", flexWrap: "wrap" }}>
-        <MiniGauge label="Clarity" value={analytics.clarityScore} color={analytics.clarityScore >= 80 ? COLORS.green : analytics.clarityScore >= 60 ? COLORS.amber : COLORS.red} suffix="/100" />
-        <MiniGauge label="Confidence" value={analytics.confidenceScore} color={analytics.confidenceScore >= 75 ? COLORS.green : analytics.confidenceScore >= 50 ? COLORS.amber : COLORS.red} suffix="/100" />
-        <MiniGauge label="Vocabulary" value={analytics.vocabularyScore} color={analytics.vocabularyScore >= 70 ? COLORS.green : analytics.vocabularyScore >= 50 ? COLORS.amber : COLORS.red} suffix="/100" />
-        <div style={{ flex: 1, minWidth: 80 }}>
-          <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>Pace</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: analytics.paceColor, lineHeight: 1 }}>{analytics.paceLabel}</div>
-          <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 3 }}>{analytics.wpm > 0 ? `~${analytics.wpm} wpm` : "—"}</div>
-        </div>
-      </div>
-
-      {/* Filler words */}
-      {analytics.fillerCount > 0 ? (
-        <div style={{ background: `${COLORS.amber}10`, border: `1px solid ${COLORS.amber}30`, borderRadius: 8, padding: "0.6rem 0.8rem", marginBottom: "0.75rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 11, color: COLORS.amber, fontWeight: 600 }}>⚠ Filler words detected — {analytics.fillerCount} total ({analytics.fillerRate}% of speech)</span>
-          </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {topFillers.map(([word, count]) => (
-              <span key={word} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, background: `${COLORS.amber}22`, color: COLORS.amber }}>
-                "{word}" ×{count}
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : analytics.wordCount > 10 ? (
-        <div style={{ background: `${COLORS.green}10`, border: `1px solid ${COLORS.green}30`, borderRadius: 8, padding: "0.6rem 0.8rem", marginBottom: "0.75rem" }}>
-          <span style={{ fontSize: 11, color: COLORS.green, fontWeight: 600 }}>✓ No filler words detected — excellent clarity!</span>
-        </div>
-      ) : null}
-
-      {/* Live coaching tips */}
-      {analytics.wordCount > 5 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {analytics.confidenceScore < 60 && (
-            <div style={{ fontSize: 11, color: COLORS.textSecondary, padding: "4px 8px", background: COLORS.bgElevated, borderRadius: 6, borderLeft: `2px solid ${COLORS.amber}` }}>
-              💡 Tip: Replace hedging phrases like "I think" or "maybe" with direct statements — "I would…" or "The approach is…"
-            </div>
-          )}
-          {analytics.wpm > 180 && (
-            <div style={{ fontSize: 11, color: COLORS.textSecondary, padding: "4px 8px", background: COLORS.bgElevated, borderRadius: 6, borderLeft: `2px solid ${COLORS.red}` }}>
-              🐇 Slow down — you're speaking too fast. Pause between key points to let ideas land.
-            </div>
-          )}
-          {analytics.wpm > 0 && analytics.wpm < 90 && (
-            <div style={{ fontSize: 11, color: COLORS.textSecondary, padding: "4px 8px", background: COLORS.bgElevated, borderRadius: 6, borderLeft: `2px solid ${COLORS.amber}` }}>
-              🐢 Pick up the pace — aim for 120–160 words per minute to sound confident and engaged.
-            </div>
-          )}
-          {analytics.fillerRate > 10 && (
-            <div style={{ fontSize: 11, color: COLORS.textSecondary, padding: "4px 8px", background: COLORS.bgElevated, borderRadius: 6, borderLeft: `2px solid ${COLORS.amber}` }}>
-              🎯 Pause instead of filling silence — a brief pause sounds more confident than "um" or "like".
-            </div>
-          )}
-          {analytics.vocabularyScore > 80 && analytics.wordCount > 20 && (
-            <div style={{ fontSize: 11, color: COLORS.textSecondary, padding: "4px 8px", background: COLORS.bgElevated, borderRadius: 6, borderLeft: `2px solid ${COLORS.green}` }}>
-              ⭐ Strong vocabulary diversity — you're using varied, technical language effectively.
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Highlighted transcript */}
-      {text && analytics.fillerCount > 0 && (
-        <details style={{ marginTop: 8 }}>
-          <summary style={{ fontSize: 11, color: COLORS.textMuted, cursor: "pointer", userSelect: "none" }}>View highlighted transcript</summary>
-          <div style={{ fontSize: 12, color: COLORS.textSecondary, lineHeight: 1.7, marginTop: 8, padding: "8px", background: COLORS.bgElevated, borderRadius: 8 }}>
-            {highlightedText()}
-          </div>
-        </details>
-      )}
-
-      {/* Session totals if multiple answers recorded */}
-      {sessionAnalytics && sessionAnalytics.length > 1 && (
-        <div style={{ borderTop: `1px solid ${COLORS.border}`, marginTop: 10, paddingTop: 10 }}>
-          <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Session avg across {sessionAnalytics.length} answers</div>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            {[
-              ["Avg clarity", Math.round(sessionAnalytics.reduce((a, b) => a + b.clarityScore, 0) / sessionAnalytics.length)],
-              ["Avg confidence", Math.round(sessionAnalytics.reduce((a, b) => a + b.confidenceScore, 0) / sessionAnalytics.length)],
-              ["Total fillers", sessionAnalytics.reduce((a, b) => a + b.fillerCount, 0)],
-            ].map(([l, v]) => (
-              <div key={l} style={{ fontSize: 11, color: COLORS.textSecondary }}><span style={{ color: COLORS.textMuted }}>{l}: </span><span style={{ color: COLORS.textPrimary, fontWeight: 600 }}>{v}</span></div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
-    </div>
-  );
-}
-
-// ─── SCREEN: MOCK INTERVIEW ───────────────────────────────────────────────────
-function InterviewScreen({ user, config, onComplete, onBack }) {
-  const questions = (SAMPLE_QUESTIONS[config.role] || SAMPLE_QUESTIONS["default"]).slice(0, 5);
-  const [qIdx, setQIdx] = useState(0);
-  const [answer, setAnswer] = useState("");
-  const [answers, setAnswers] = useState([]);
-  const [scores, setScores] = useState([]);
-  const [speechStats, setSpeechStats] = useState([]);
-  const [feedback, setFeedback] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(120);
-  const [timerActive, setTimerActive] = useState(false);
-  const [showAnalytics, setShowAnalytics] = useState(true);
-  const [interimTranscript, setInterimTranscript] = useState("");
-  const recognitionRef = useRef(null);
-  const timerRef = useRef(null);
-  const waveRef = useRef(null);
-  const waveAnimRef = useRef(null);
-  const [waveBars, setWaveBars] = useState(Array(20).fill(4));
-
-  const currentQ = questions[qIdx];
-  const isLast = qIdx === questions.length - 1;
-  const liveText = answer + (interimTranscript ? " " + interimTranscript : "");
-
-  // Timer
-  useEffect(() => {
-    if (timerActive && timeLeft > 0) {
-      timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-    }
-    return () => clearTimeout(timerRef.current);
-  }, [timerActive, timeLeft]);
-
-  // Animated waveform when listening
-  useEffect(() => {
-    if (listening) {
-      const animate = () => {
-        setWaveBars(Array(20).fill(0).map(() => Math.floor(Math.random() * 28) + 4));
-        waveAnimRef.current = setTimeout(animate, 100);
-      };
-      animate();
-    } else {
-      clearTimeout(waveAnimRef.current);
-      setWaveBars(Array(20).fill(4));
-    }
-    return () => clearTimeout(waveAnimRef.current);
-  }, [listening]);
-
-  // Speak question via TTS
-  const speakQuestion = useCallback((text) => {
-    if (!config.voiceEnabled || !window.speechSynthesis) return;
+  // ── Speak question via TTS ──
+  const speakText=useCallback((text,onEnd)=>{
+    if(!config.voiceEnabled||!window.speechSynthesis)return onEnd?.();
     window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 0.9; utt.pitch = 1; utt.volume = 1;
-    utt.onstart = () => setSpeaking(true);
-    utt.onend = () => { setSpeaking(false); setTimerActive(true); };
+    const utt=new SpeechSynthesisUtterance(text);
+    utt.rate=0.88; utt.pitch=1.05; utt.volume=1;
+    // Prefer a female voice
+    const voices=window.speechSynthesis.getVoices();
+    const fem=voices.find(v=>v.name.toLowerCase().includes("female")||v.name.includes("Samantha")||v.name.includes("Karen")||v.name.includes("Moira"));
+    if(fem)utt.voice=fem;
+    utt.onstart=()=>setAvaSpeaking(true);
+    utt.onend=()=>{ setAvaSpeaking(false); onEnd?.(); };
     window.speechSynthesis.speak(utt);
-  }, [config.voiceEnabled]);
+  },[config.voiceEnabled]);
 
-  useEffect(() => {
-    setAnswer(""); setInterimTranscript(""); setFeedback(null); setTimeLeft(120); setTimerActive(false);
-    if (config.voiceEnabled) setTimeout(() => speakQuestion(currentQ), 400);
-    else setTimerActive(true);
-  }, [qIdx]);
+  // ── Ask question when question changes ──
+  useEffect(()=>{
+    if(!currentQ||loadingQ)return;
+    setAnswer(""); setInterimTranscript(""); setFeedback(""); setCoachTip(""); setTimeLeft(120); setTimerActive(false);
+    setAvaListening(false);
+    setAvaMessage(`Question ${qIdx+1} of ${questions.length}`);
+    speakText(currentQ,()=>{ setTimerActive(true); setAvaListening(true); setAvaMessage("I'm listening — take your time and answer confidently."); });
+  },[qIdx,currentQ,loadingQ]);
 
-  // Voice recording with real-time interim results
-  const toggleListen = () => {
-    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
-      alert("Speech recognition not supported in this browser. Please use Chrome or Edge.");
-      return;
-    }
-    if (listening) {
-      recognitionRef.current?.stop();
-      setListening(false);
-      setInterimTranscript("");
-      return;
-    }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const rec = new SR();
-    rec.continuous = true; rec.interimResults = true; rec.lang = "en-US";
-    rec.onresult = e => {
-      let final = "";
-      let interim = "";
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) final += e.results[i][0].transcript + " ";
-        else interim += e.results[i][0].transcript;
-      }
-      if (final) setAnswer(final.trim());
-      setInterimTranscript(interim);
+  // ── Real-time Ava coaching tip as user types ──
+  const coachDebounce=useRef(null);
+  useEffect(()=>{
+    if(answer.length<30||feedback)return;
+    clearTimeout(coachDebounce.current);
+    coachDebounce.current=setTimeout(async()=>{
+      const stats=analyzeSpeech(answer);
+      // Quick local tip — no API call
+      if(stats.fillerRate>10) setCoachTip("💡 Tip from Ava: Try to reduce filler words — pause instead of saying 'um' or 'like'.");
+      else if(stats.confidenceScore<55) setCoachTip("💡 Tip from Ava: Sound more confident — replace 'I think' with 'I would' or 'In my experience'.");
+      else if(stats.wpm>185) setCoachTip("💡 Tip from Ava: You're speaking fast — slow down to let your ideas land.");
+      else if(answer.split(/[.!?]/).filter(s=>s.trim()).length===1&&answer.length>80) setCoachTip("💡 Tip from Ava: Structure your answer — try the STAR method: Situation, Task, Action, Result.");
+      else setCoachTip("");
+    },1200);
+    return()=>clearTimeout(coachDebounce.current);
+  },[answer]);
+
+  // ── Voice recording ──
+  const toggleListen=()=>{
+    if(!window.SpeechRecognition&&!window.webkitSpeechRecognition)return alert("Use Chrome or Edge for voice features");
+    if(listening){ recognitionRef.current?.stop(); setListening(false); setInterimTranscript(""); return; }
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    const rec=new SR();
+    rec.continuous=true; rec.interimResults=true; rec.lang="en-US";
+    rec.onresult=e=>{
+      let fin="",int="";
+      for(let i=0;i<e.results.length;i++){ if(e.results[i].isFinal)fin+=e.results[i][0].transcript+" "; else int+=e.results[i][0].transcript; }
+      if(fin)setAnswer(fin.trim()); setInterimTranscript(int);
     };
-    rec.onend = () => { setListening(false); setInterimTranscript(""); };
-    rec.onerror = () => { setListening(false); setInterimTranscript(""); };
-    rec.start();
-    recognitionRef.current = rec;
-    setListening(true);
+    rec.onend=()=>{ setListening(false); setInterimTranscript(""); };
+    rec.start(); recognitionRef.current=rec; setListening(true);
   };
 
-  const evaluateAnswer = async () => {
-    const finalAnswer = answer.trim();
-    if (!finalAnswer) return;
-    // Stop listening if active
-    if (listening) { recognitionRef.current?.stop(); setListening(false); setInterimTranscript(""); }
-    setLoading(true);
-    setTimerActive(false);
-
-    // Save speech analytics for this answer
-    const stats = analyzeSpeech(finalAnswer);
-    setSpeechStats(prev => [...prev, stats]);
-
-    try {
-      const prompt = `You are a senior technical interviewer. Evaluate this answer and return ONLY a JSON object (no markdown):
+  // ── Evaluate answer with real AI ──
+  const evaluateAnswer=async()=>{
+    const finalAnswer=answer.trim(); if(!finalAnswer)return;
+    if(listening){ recognitionRef.current?.stop(); setListening(false); setInterimTranscript(""); }
+    setLoadingEval(true); setTimerActive(false); setAvaListening(false);
+    setAvaThinking(true); setAvaMessage("Let me evaluate your answer...");
+    const stats=analyzeSpeech(finalAnswer);
+    setSpeechStats(prev=>[...prev,stats]);
+    try{
+      const text=await callClaude([{role:"user",content:`You are Ava, a warm but rigorous AI interview coach. Evaluate this interview answer and return ONLY valid JSON:
 {
   "score": 78,
-  "verdict": "Good answer with room for improvement",
-  "strengths": ["Clear explanation", "Good example"],
-  "improvements": ["Add time complexity", "Mention edge cases"],
-  "ideal_points": ["Key point 1", "Key point 2", "Key point 3"],
-  "follow_up": "Can you explain how this scales?"
+  "verdict": "Good answer, covers the core points but could go deeper",
+  "strengths": ["Clear structure", "Relevant example used"],
+  "improvements": ["Add quantifiable outcome", "Mention stakeholder impact"],
+  "ideal_points": ["Key point they should have made 1", "Key point 2"],
+  "follow_up": "Can you tell me more about the outcome of that situation?",
+  "ava_feedback": "Nice work! You showed good self-awareness there. For your next answer, try to quantify the impact — numbers make your answers 2x more memorable to interviewers.",
+  "score_breakdown": {"content": 75, "structure": 80, "relevance": 78, "confidence": 72}
 }
 
 Question: ${currentQ}
 Answer: ${finalAnswer}
-Seniority expected: ${config.seniority}
-Speech stats: ${stats.fillerCount} filler words, clarity ${stats.clarityScore}/100, confidence ${stats.confidenceScore}/100`;
-
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-      const data = await res.json();
-      const text = data.content?.find(b => b.type === "text")?.text || "{}";
-      const fb = JSON.parse(text.replace(/```json|```/g, "").trim());
-      setFeedback({ ...fb, speechStats: stats });
-      setAnswers(prev => [...prev, finalAnswer]);
-      setScores(prev => [...prev, fb.score]);
-    } catch {
-      const fb = { score: 72, verdict: "Solid answer covering the main concepts.", strengths: ["Good structure", "Relevant example"], improvements: ["More depth on edge cases"], ideal_points: ["Covered the core concept", "Should mention trade-offs", "Performance considerations"], follow_up: "Can you walk me through the time complexity?", speechStats: stats };
-      setFeedback(fb);
-      setAnswers(prev => [...prev, finalAnswer]);
-      setScores(prev => [...prev, fb.score]);
+Role: ${config.role}, Seniority: ${config.seniority}
+Speech: ${stats.fillerCount} fillers, clarity ${stats.clarityScore}/100, confidence ${stats.confidenceScore}/100`}],
+      "claude-sonnet-4-20250514", 1200);
+      const parsed=parseJSON(text);
+      if(parsed){
+        setFeedback(parsed);
+        setAnswers(prev=>[...prev,finalAnswer]);
+        setScores(prev=>[...prev,parsed.score]);
+        setAvaThinking(false);
+        setAvaMessage(parsed.ava_feedback||"Good effort! Let's keep going.");
+        speakText(parsed.ava_feedback||`You scored ${parsed.score} out of 100. ${parsed.verdict}`,()=>{});
+      } else throw new Error();
+    }catch{
+      const fb={
+        score:72,verdict:"Solid answer covering the main concepts.",
+        strengths:["Good structure","Relevant example"],
+        improvements:["Add quantifiable outcomes","Mention stakeholder impact"],
+        ideal_points:["Quantified impact","Stakeholder consideration","Lessons learned"],
+        follow_up:"Can you walk me through what happened next?",
+        ava_feedback:"Good effort! Try to add specific numbers and outcomes — that's what interviewers remember most.",
+        score_breakdown:{content:70,structure:75,relevance:72,confidence:68},
+      };
+      setFeedback(fb); setAnswers(prev=>[...prev,finalAnswer]); setScores(prev=>[...prev,fb.score]);
+      setAvaThinking(false); setAvaMessage(fb.ava_feedback);
     }
-    setLoading(false);
+    setLoadingEval(false);
   };
 
-  const nextQuestion = () => {
-    if (isLast) {
-      const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-      const avgClarity = speechStats.length ? Math.round(speechStats.reduce((a, b) => a + b.clarityScore, 0) / speechStats.length) : null;
-      const avgConfidence = speechStats.length ? Math.round(speechStats.reduce((a, b) => a + b.confidenceScore, 0) / speechStats.length) : null;
-      const totalFillers = speechStats.reduce((a, b) => a + b.fillerCount, 0);
-      onComplete({ questions, answers, scores, overallScore: avg, speechStats, avgClarity, avgConfidence, totalFillers });
-    } else {
-      setQIdx(q => q + 1);
-    }
+  const nextQuestion=()=>{
+    if(isLast){
+      const avg=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+      const avgClarity=speechStats.length?Math.round(speechStats.reduce((a,b)=>a+b.clarityScore,0)/speechStats.length):null;
+      const avgConf=speechStats.length?Math.round(speechStats.reduce((a,b)=>a+b.confidenceScore,0)/speechStats.length):null;
+      onComplete({questions,answers,scores,overallScore:avg,speechStats,avgClarity,avgConfidence:avgConf,totalFillers:speechStats.reduce((a,b)=>a+b.fillerCount,0)});
+    } else { setQIdx(q=>q+1); }
   };
 
-  const timerColor = timeLeft <= 20 ? COLORS.red : timeLeft <= 60 ? COLORS.amber : COLORS.green;
-  const mins = Math.floor(timeLeft / 60);
-  const secs = timeLeft % 60;
+  const timerColor=timeLeft<=20?C.red:timeLeft<=60?C.amber:C.green;
+  const mins=Math.floor(timeLeft/60), secs=timeLeft%60;
+  const speech=analyzeSpeech(feedback?answers[answers.length-1]||answer:liveText);
 
-  return (
-    <div style={{ padding: "1.5rem", maxWidth: 900, margin: "0 auto" }}>
+  if(loadingQ) return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:24}}>
+      <AvaAvatar speaking={false} listening={false} thinking={true} size={100}/>
+      <div style={{color:C.txt2,fontSize:15}}>Ava is preparing your questions...</div>
+      <div style={{color:C.txt3,fontSize:12}}>Personalizing for {config.role} · {config.seniority}</div>
+    </div>
+  );
+
+  return(
+    <div style={{padding:"1.5rem",maxWidth:960,margin:"0 auto",fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={onBack} style={{ background: "none", border: "none", color: COLORS.textSecondary, cursor: "pointer", fontSize: 14 }}>✕ End</button>
-          <div style={{ display: "flex", gap: 6 }}>
-            {questions.map((_, i) => (
-              <div key={i} style={{ width: 28, height: 4, borderRadius: 99, background: i < qIdx ? COLORS.accent : i === qIdx ? COLORS.accentHover : COLORS.border, transition: "background 0.3s" }} />
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.25rem"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <button onClick={onBack} style={{background:"none",border:"none",color:C.txt2,cursor:"pointer",fontSize:14}}>✕ End</button>
+          <div style={{display:"flex",gap:5}}>
+            {questions.map((_,i)=>(
+              <div key={i} style={{width:26,height:4,borderRadius:99,
+                background:i<qIdx?C.accent:i===qIdx?C.accentHover:C.border,transition:"background 0.3s"}}/>
             ))}
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <button onClick={() => setShowAnalytics(s => !s)} style={{ background: showAnalytics ? COLORS.accentSoft : "transparent", border: `1px solid ${showAnalytics ? COLORS.accent : COLORS.border}`, color: showAnalytics ? COLORS.accent : COLORS.textSecondary, borderRadius: 8, padding: "4px 11px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-            📊 {showAnalytics ? "Hide" : "Show"} analytics
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <button onClick={()=>setShowAnalytics(s=>!s)} style={{
+            background:showAnalytics?C.accentSoft:"transparent",border:`1px solid ${showAnalytics?C.accent:C.border}`,
+            color:showAnalytics?C.accent:C.txt2,borderRadius:8,padding:"4px 11px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>
+            📊 Analytics
           </button>
-          <span style={{ color: COLORS.textSecondary, fontSize: 13 }}>Q{qIdx + 1}/{questions.length}</span>
-          <div style={{ fontWeight: 700, fontSize: 18, color: timerColor, fontVariantNumeric: "tabular-nums", minWidth: 48 }}>
-            {mins}:{secs.toString().padStart(2, "0")}
+          <span style={{color:C.txt2,fontSize:13}}>Q{qIdx+1}/{questions.length}</span>
+          <div style={{fontWeight:700,fontSize:18,color:timerColor,fontVariantNumeric:"tabular-nums",minWidth:48}}>
+            {mins}:{secs.toString().padStart(2,"0")}
           </div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: showAnalytics ? "1fr 300px" : "1fr", gap: "1rem", alignItems: "start" }}>
-        {/* LEFT: question + answer */}
+      <div style={{display:"grid",gridTemplateColumns:showAnalytics?"1fr 290px":"1fr",gap:"1rem",alignItems:"start"}}>
+        {/* LEFT */}
         <div>
-          {/* Question card */}
-          <Card style={{ marginBottom: "0.75rem", borderColor: speaking ? `${COLORS.accent}66` : COLORS.border }}>
-            {speaking && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                  {[0,1,2,3,4].map(i => (
-                    <div key={i} style={{ width: 3, background: COLORS.accent, borderRadius: 99, animation: `wave 0.8s ${i * 0.12}s ease-in-out infinite alternate`, height: 16 }} />
-                  ))}
+          {/* Ava + question */}
+          <Card style={{marginBottom:"0.75rem",borderColor:avaSpeaking?`${C.accent}66`:C.border}}>
+            <div style={{display:"flex",gap:16,alignItems:"flex-start"}}>
+              <AvaAvatar speaking={avaSpeaking} listening={avaListening} thinking={avaThinking} size={80}/>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <span style={{color:C.accent,fontSize:12,fontWeight:600}}>AVA</span>
+                  {avaSpeaking&&<span style={{fontSize:11,color:C.txt2,animation:"fadePulse 1s infinite"}}>speaking...</span>}
+                  {avaThinking&&<span style={{fontSize:11,color:C.amber}}>thinking...</span>}
+                  {avaListening&&!avaSpeaking&&!avaThinking&&<span style={{fontSize:11,color:C.green}}>listening...</span>}
                 </div>
-                <span style={{ color: COLORS.accent, fontSize: 12 }}>AI Interviewer speaking...</span>
+                {avaMessage&&!feedback&&(
+                  <p style={{color:C.txt2,fontSize:13,margin:"0 0 10px",fontStyle:"italic"}}>"{avaMessage}"</p>
+                )}
+                <p style={{color:C.txt,fontSize:15,lineHeight:1.65,margin:0,fontWeight:500}}>{currentQ}</p>
+                {config.voiceEnabled&&(
+                  <button onClick={()=>speakText(currentQ,()=>{})} style={{marginTop:8,background:"none",border:"none",color:C.accent,cursor:"pointer",fontSize:12}}>🔊 Replay</button>
+                )}
               </div>
-            )}
-            <div style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 8 }}>Question {qIdx + 1}</div>
-            <p style={{ color: COLORS.textPrimary, fontSize: 16, lineHeight: 1.65, margin: 0 }}>{currentQ}</p>
-            {config.voiceEnabled && (
-              <button onClick={() => speakQuestion(currentQ)} style={{ marginTop: 10, background: "none", border: "none", color: COLORS.accent, cursor: "pointer", fontSize: 12 }}>🔊 Replay</button>
-            )}
+            </div>
           </Card>
 
-          {/* Answer area */}
-          {!feedback && (
-            <Card style={{ marginBottom: "0.75rem" }}>
-              {/* Waveform visualizer */}
-              {config.voiceEnabled && (
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {listening && <div style={{ width: 7, height: 7, borderRadius: "50%", background: COLORS.red, animation: "pulse 1s infinite" }} />}
-                      <span style={{ color: COLORS.textSecondary, fontSize: 12 }}>{listening ? "Recording..." : "Your answer"}</span>
+          {/* Answer */}
+          {!feedback&&(
+            <Card style={{marginBottom:"0.75rem"}}>
+              {config.voiceEnabled&&(
+                <div style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      {listening&&<div style={{width:7,height:7,borderRadius:"50%",background:C.red,animation:"pulse 1s infinite"}}/>}
+                      <span style={{color:C.txt2,fontSize:12}}>{listening?"Recording...":"Your answer"}</span>
                     </div>
                     <button onClick={toggleListen} style={{
-                      display: "flex", alignItems: "center", gap: 6, padding: "7px 16px",
-                      borderRadius: 8, border: `1px solid ${listening ? COLORS.red : COLORS.accent}`,
-                      background: listening ? COLORS.redSoft : COLORS.accentSoft,
-                      color: listening ? COLORS.red : COLORS.accent,
-                      cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600,
-                    }}>
-                      {listening ? "⏹ Stop" : "🎙 Speak"}
+                      display:"flex",alignItems:"center",gap:6,padding:"7px 16px",borderRadius:8,
+                      border:`1px solid ${listening?C.red:C.accent}`,
+                      background:listening?C.redSoft:C.accentSoft,
+                      color:listening?C.red:C.accent,cursor:"pointer",fontSize:13,fontFamily:"inherit",fontWeight:600}}>
+                      {listening?"⏹ Stop":"🎙 Speak"}
                     </button>
                   </div>
-                  {/* Waveform bars */}
-                  <div ref={waveRef} style={{ display: "flex", alignItems: "center", gap: 2, height: 36, padding: "0 4px", background: COLORS.bgElevated, borderRadius: 8, overflow: "hidden" }}>
-                    {waveBars.map((h, i) => (
-                      <div key={i} style={{ flex: 1, height: h, background: listening ? COLORS.accent : COLORS.border, borderRadius: 99, transition: listening ? "height 0.08s" : "height 0.5s", opacity: listening ? 0.8 + (i % 3) * 0.07 : 0.4 }} />
+                  <div style={{display:"flex",alignItems:"center",gap:2,height:34,padding:"0 6px",background:C.elevated,borderRadius:8}}>
+                    {waveBars.map((h,i)=>(
+                      <div key={i} style={{flex:1,height:h,background:listening?C.accent:C.border,borderRadius:99,transition:listening?"height 0.08s":"height 0.5s",opacity:listening?0.7+i%3*0.1:0.4}}/>
                     ))}
                   </div>
-                  {/* Interim transcript preview */}
-                  {interimTranscript && (
-                    <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 6, fontStyle: "italic", padding: "4px 8px", background: COLORS.bgElevated, borderRadius: 6 }}>
-                      {interimTranscript}
-                    </div>
-                  )}
+                  {interimTranscript&&<div style={{fontSize:12,color:C.txt3,marginTop:5,fontStyle:"italic",padding:"4px 8px",background:C.elevated,borderRadius:6}}>{interimTranscript}</div>}
                 </div>
               )}
-
-              {!config.voiceEnabled && (
-                <div style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 8 }}>Your answer</div>
+              <textarea value={answer} onChange={e=>setAnswer(e.target.value)}
+                placeholder={config.voiceEnabled?"Speak your answer or type here...":"Type your answer — structure, examples, outcomes..."}
+                style={{width:"100%",minHeight:120,padding:"12px",background:C.elevated,border:`1px solid ${C.border}`,borderRadius:10,color:C.txt,fontSize:13,fontFamily:"inherit",resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.65}}/>
+              {/* Live coaching tip from Ava */}
+              {coachTip&&(
+                <div style={{marginTop:8,padding:"8px 12px",background:C.accentSoft,border:`1px solid ${C.accent}33`,borderRadius:8,fontSize:12,color:C.txt2,display:"flex",gap:8,alignItems:"flex-start"}}>
+                  <AvaAvatar speaking={false} listening={false} thinking={false} size={24}/>
+                  <span>{coachTip}</span>
+                </div>
               )}
-
-              <textarea
-                value={answer}
-                onChange={e => setAnswer(e.target.value)}
-                placeholder={config.voiceEnabled ? "Transcript will appear here as you speak, or type manually..." : "Type your answer here. Be as detailed as possible — structure, examples, trade-offs..."}
-                style={{ width: "100%", minHeight: 130, padding: "12px", background: COLORS.bgElevated, border: `1px solid ${COLORS.border}`, borderRadius: 10, color: COLORS.textPrimary, fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.65 }}
-              />
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-                <div style={{ fontSize: 11, color: COLORS.textMuted }}>{answer.trim().split(/\s+/).filter(Boolean).length} words</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Btn variant="ghost" onClick={nextQuestion} style={{ fontSize: 12, padding: "7px 14px" }}>Skip →</Btn>
-                  <Btn onClick={evaluateAnswer} disabled={!answer.trim() || loading}>
-                    {loading ? "AI evaluating..." : "Submit Answer →"}
-                  </Btn>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
+                <span style={{fontSize:11,color:C.txt3}}>{answer.trim().split(/\s+/).filter(Boolean).length} words</span>
+                <div style={{display:"flex",gap:8}}>
+                  <Btn variant="ghost" onClick={nextQuestion} style={{fontSize:12,padding:"7px 14px"}}>Skip →</Btn>
+                  <Btn onClick={evaluateAnswer} disabled={!answer.trim()||loadingEval}>{loadingEval?"Ava is evaluating...":"Submit Answer →"}</Btn>
                 </div>
               </div>
             </Card>
           )}
 
-          {/* Feedback panel */}
-          {feedback && (
-            <Card style={{ borderColor: feedback.score >= 80 ? `${COLORS.green}44` : feedback.score >= 60 ? `${COLORS.amber}44` : `${COLORS.red}44` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
-                <div>
-                  <div style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 4 }}>AI Feedback</div>
-                  <div style={{ color: COLORS.textPrimary, fontWeight: 600, fontSize: 15, maxWidth: 380 }}>{feedback.verdict}</div>
+          {/* Feedback */}
+          {feedback&&(
+            <Card style={{borderColor:feedback.score>=80?`${C.green}44`:feedback.score>=60?`${C.amber}44`:`${C.red}44`}}>
+              {/* Ava feedback message */}
+              <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:"1rem",padding:"10px 14px",background:C.accentSoft,borderRadius:10}}>
+                <AvaAvatar speaking={avaSpeaking} listening={false} thinking={false} size={44}/>
+                <div style={{flex:1}}>
+                  <div style={{color:C.accent,fontSize:11,fontWeight:600,marginBottom:4}}>AVA'S FEEDBACK</div>
+                  <p style={{color:C.txt,fontSize:13,margin:0,lineHeight:1.6}}>{feedback.ava_feedback}</p>
                 </div>
-                <div style={{ textAlign: "center", flexShrink: 0 }}>
-                  <div style={{ fontSize: 40, fontWeight: 800, color: feedback.score >= 80 ? COLORS.green : feedback.score >= 60 ? COLORS.amber : COLORS.red, lineHeight: 1 }}>{feedback.score}</div>
-                  <div style={{ fontSize: 11, color: COLORS.textSecondary }}>/ 100</div>
+                <div style={{textAlign:"center",flexShrink:0}}>
+                  <div style={{fontSize:36,fontWeight:800,color:feedback.score>=80?C.green:feedback.score>=60?C.amber:C.red,lineHeight:1}}>{feedback.score}</div>
+                  <div style={{fontSize:10,color:C.txt2}}>/100</div>
                 </div>
               </div>
 
-              {/* Speech stats summary in feedback */}
-              {feedback.speechStats && (
-                <div style={{ display: "flex", gap: 10, marginBottom: "0.75rem", flexWrap: "wrap" }}>
-                  {[
-                    ["Clarity", feedback.speechStats.clarityScore, feedback.speechStats.clarityScore >= 80 ? COLORS.green : COLORS.amber],
-                    ["Confidence", feedback.speechStats.confidenceScore, feedback.speechStats.confidenceScore >= 75 ? COLORS.green : COLORS.amber],
-                    ["Vocab", feedback.speechStats.vocabularyScore, feedback.speechStats.vocabularyScore >= 70 ? COLORS.green : COLORS.amber],
-                    ["Fillers", feedback.speechStats.fillerCount, feedback.speechStats.fillerCount === 0 ? COLORS.green : feedback.speechStats.fillerCount <= 3 ? COLORS.amber : COLORS.red],
-                  ].map(([label, val, color]) => (
-                    <div key={label} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", background: `${color}14`, borderRadius: 8, border: `1px solid ${color}33` }}>
-                      <span style={{ fontSize: 11, color: COLORS.textSecondary }}>{label}:</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color }}>{label === "Fillers" ? val : `${val}/100`}</span>
+              {/* Score breakdown bars */}
+              {feedback.score_breakdown&&(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:"1rem"}}>
+                  {Object.entries(feedback.score_breakdown).map(([k,v])=>(
+                    <div key={k}>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.txt2,marginBottom:3}}>
+                        <span style={{textTransform:"capitalize"}}>{k}</span>
+                        <span style={{color:v>=80?C.green:v>=60?C.amber:C.red,fontWeight:600}}>{v}</span>
+                      </div>
+                      <div style={{height:4,background:C.border,borderRadius:99,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:`${v}%`,background:v>=80?C.green:v>=60?C.amber:C.red,borderRadius:99,transition:"width 1s cubic-bezier(.4,0,.2,1) 0.2s"}}/>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: "0.75rem" }}>
-                <div style={{ background: COLORS.greenSoft, borderRadius: 8, padding: "0.75rem" }}>
-                  <div style={{ color: COLORS.green, fontSize: 11, fontWeight: 600, marginBottom: 6 }}>WHAT WORKED</div>
-                  {feedback.strengths?.map(s => <div key={s} style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 3 }}>✓ {s}</div>)}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:"0.75rem"}}>
+                <div style={{background:C.greenSoft,borderRadius:8,padding:"0.75rem"}}>
+                  <div style={{color:C.green,fontSize:11,fontWeight:600,marginBottom:6}}>WHAT WORKED</div>
+                  {feedback.strengths?.map(s=><div key={s} style={{color:C.txt2,fontSize:12,marginBottom:3}}>✓ {s}</div>)}
                 </div>
-                <div style={{ background: COLORS.amberSoft, borderRadius: 8, padding: "0.75rem" }}>
-                  <div style={{ color: COLORS.amber, fontSize: 11, fontWeight: 600, marginBottom: 6 }}>IMPROVE THIS</div>
-                  {feedback.improvements?.map(s => <div key={s} style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 3 }}>→ {s}</div>)}
+                <div style={{background:C.amberSoft,borderRadius:8,padding:"0.75rem"}}>
+                  <div style={{color:C.amber,fontSize:11,fontWeight:600,marginBottom:6}}>IMPROVE THIS</div>
+                  {feedback.improvements?.map(s=><div key={s} style={{color:C.txt2,fontSize:12,marginBottom:3}}>→ {s}</div>)}
                 </div>
               </div>
 
-              {feedback.follow_up && (
-                <div style={{ background: COLORS.accentSoft, borderRadius: 8, padding: "0.75rem", marginBottom: "0.75rem" }}>
-                  <div style={{ color: COLORS.accent, fontSize: 11, fontWeight: 600, marginBottom: 4 }}>FOLLOW-UP</div>
-                  <div style={{ color: COLORS.textSecondary, fontSize: 13 }}>"{feedback.follow_up}"</div>
+              {feedback.follow_up&&(
+                <div style={{background:C.accentSoft,borderRadius:8,padding:"0.75rem",marginBottom:"0.75rem"}}>
+                  <div style={{color:C.accent,fontSize:11,fontWeight:600,marginBottom:4}}>AVA'S FOLLOW-UP</div>
+                  <div style={{color:C.txt2,fontSize:13}}>"{feedback.follow_up}"</div>
                 </div>
               )}
 
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <Btn variant={isLast ? "success" : "primary"} onClick={nextQuestion}>
-                  {isLast ? "🏁 Finish & See Report" : "Next Question →"}
+              <div style={{display:"flex",justifyContent:"flex-end"}}>
+                <Btn variant={isLast?"success":"primary"} onClick={nextQuestion}>
+                  {isLast?"🏁 Finish & See Report":"Next Question →"}
                 </Btn>
               </div>
             </Card>
           )}
         </div>
 
-        {/* RIGHT: live analytics panel */}
-        {showAnalytics && (
+        {/* RIGHT: analytics + scoreboard */}
+        {showAnalytics&&(
           <div>
-            <SpeechAnalyticsPanel
-              text={feedback ? answers[answers.length - 1] || answer : liveText}
-              listening={listening}
-              sessionAnalytics={speechStats}
-            />
-
-            {/* Q-by-Q mini scoreboard */}
-            {scores.length > 0 && (
-              <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "0.85rem", marginTop: "0.75rem" }}>
-                <div style={{ fontSize: 10, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Session scores</div>
-                {scores.map((s, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: COLORS.textMuted, minWidth: 20 }}>Q{i + 1}</span>
-                    <div style={{ flex: 1, height: 5, background: COLORS.border, borderRadius: 99, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${s}%`, background: s >= 80 ? COLORS.green : s >= 60 ? COLORS.amber : COLORS.red, borderRadius: 99 }} />
+            {/* Speech analytics */}
+            <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"1rem",marginBottom:"0.75rem"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:"0.75rem"}}>
+                {listening&&<div style={{width:7,height:7,borderRadius:"50%",background:C.red,animation:"pulse 1s infinite"}}/>}
+                <span style={{fontSize:11,color:C.txt2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em"}}>Live Speech Analytics</span>
+                {speech.wordCount>0&&<span style={{fontSize:10,color:C.txt3,marginLeft:"auto"}}>{speech.wordCount}w</span>}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:"0.75rem"}}>
+                {[["Clarity",speech.clarityScore],[" Confidence",speech.confidenceScore],["Vocabulary",speech.vocabularyScore]].map(([l,v])=>(
+                  <div key={l}>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.txt3,marginBottom:3}}>
+                      <span>{l}</span><span style={{color:v>=75?C.green:v>=50?C.amber:C.red,fontWeight:600}}>{v}</span>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: s >= 80 ? COLORS.green : s >= 60 ? COLORS.amber : COLORS.red, minWidth: 28 }}>{s}</span>
+                    <div style={{height:4,background:C.border,borderRadius:99,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${v}%`,background:v>=75?C.green:v>=50?C.amber:C.red,borderRadius:99}}/>
+                    </div>
                   </div>
                 ))}
-                {scores.length > 0 && (
-                  <div style={{ borderTop: `1px solid ${COLORS.border}`, marginTop: 8, paddingTop: 8, fontSize: 12, color: COLORS.textSecondary, display: "flex", justifyContent: "space-between" }}>
-                    <span>Running avg</span>
-                    <span style={{ fontWeight: 700, color: COLORS.textPrimary }}>{Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)}</span>
+                <div>
+                  <div style={{fontSize:10,color:C.txt3,marginBottom:3}}>Pace</div>
+                  <div style={{fontSize:13,fontWeight:700,color:speech.paceColor}}>{speech.paceLabel}</div>
+                  <div style={{fontSize:10,color:C.txt3}}>{speech.wpm>0?`~${speech.wpm} wpm`:""}</div>
+                </div>
+              </div>
+              {speech.fillerCount>0?(
+                <div style={{background:`${C.amber}10`,border:`1px solid ${C.amber}30`,borderRadius:8,padding:"0.6rem 0.8rem"}}>
+                  <div style={{fontSize:11,color:C.amber,fontWeight:600,marginBottom:5}}>⚠ {speech.fillerCount} filler words</div>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {Object.entries(speech.fillerWords).slice(0,4).map(([w,n])=>(
+                      <span key={w} style={{fontSize:10,padding:"1px 7px",borderRadius:99,background:`${C.amber}22`,color:C.amber}}>"{w}" ×{n}</span>
+                    ))}
                   </div>
-                )}
+                </div>
+              ):speech.wordCount>10?(
+                <div style={{background:C.greenSoft,border:`1px solid ${C.green}30`,borderRadius:8,padding:"0.5rem 0.8rem",fontSize:11,color:C.green}}>✓ No filler words detected!</div>
+              ):null}
+            </div>
+
+            {/* Q-by-Q scores */}
+            {scores.length>0&&(
+              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"0.85rem"}}>
+                <div style={{fontSize:10,color:C.txt3,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:8}}>Session scores</div>
+                {scores.map((s,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                    <span style={{fontSize:11,color:C.txt3,minWidth:20}}>Q{i+1}</span>
+                    <div style={{flex:1,height:5,background:C.border,borderRadius:99,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${s}%`,background:s>=80?C.green:s>=60?C.amber:C.red,borderRadius:99,transition:"width 0.8s"}}/>
+                    </div>
+                    <span style={{fontSize:11,fontWeight:700,color:s>=80?C.green:s>=60?C.amber:C.red,minWidth:28}}>{s}</span>
+                  </div>
+                ))}
+                <div style={{borderTop:`1px solid ${C.border}`,marginTop:8,paddingTop:8,fontSize:12,color:C.txt2,display:"flex",justifyContent:"space-between"}}>
+                  <span>Running avg</span>
+                  <span style={{fontWeight:700,color:C.txt}}>{Math.round(scores.reduce((a,b)=>a+b,0)/scores.length)}</span>
+                </div>
               </div>
             )}
           </div>
         )}
       </div>
-
       <style>{`
-        @keyframes wave { from { height: 6px; } to { height: 22px; } }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.25}}
+        @keyframes fadePulse{0%,100%{opacity:1}50%{opacity:0.4}}
       `}</style>
     </div>
   );
 }
 
 // ─── SCREEN: REPORT ───────────────────────────────────────────────────────────
-function ReportScreen({ result, onDashboard, onRetry }) {
-  const [reportData, setReportData] = useState(null);
-  const [loading, setLoading] = useState(true);
+function ReportScreen({result,onDashboard,onRetry}){
+  const [report,setReport]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [avaSpeaking,setAvaSpeaking]=useState(false);
 
-  useEffect(() => {
-    generateReport();
-  }, []);
+  useEffect(()=>{ generateReport(); },[]);
 
-  const generateReport = async () => {
-    try {
-      const prompt = `Generate an interview performance report as JSON (no markdown):
+  const generateReport=async()=>{
+    try{
+      const text=await callClaude([{role:"user",content:`You are Ava, a warm and honest AI interview coach. Generate a post-interview performance report. Return ONLY valid JSON:
 {
-  "summary": "2 sentence overall summary",
+  "summary": "2-sentence honest summary of performance",
   "technical_score": 74,
   "communication_score": 80,
   "confidence_score": 68,
   "problem_solving_score": 71,
   "top_strength": "Clear and structured communication",
   "critical_gap": "System design depth",
-  "next_steps": ["Study distributed systems", "Practice system design problems on Excalidraw", "Review consistent hashing"],
-  "resources": [{"title": "System Design Primer", "type": "GitHub repo"}, {"title": "Designing Data-Intensive Applications", "type": "Book"}],
-  "hiring_verdict": "Strong candidate with targeted preparation needed"
+  "next_steps": ["Specific action 1", "Specific action 2", "Specific action 3"],
+  "resources": [{"title": "Resource name", "type": "Type"}],
+  "hiring_verdict": "Strong candidate — 2-3 weeks targeted prep recommended",
+  "ava_closing": "Personal encouraging message from Ava about their progress and next steps"
 }
-Scores: ${JSON.stringify(result.scores)}
-Questions covered: ${result.questions.length}
-Overall: ${result.overallScore}%`;
 
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-      const data = await res.json();
-      const text = data.content?.find(b => b.type === "text")?.text || "{}";
-      setReportData(JSON.parse(text.replace(/```json|```/g, "").trim()));
-    } catch {
-      setReportData({
-        summary: "You demonstrated solid foundational knowledge with consistent performance across technical questions. Focus on deepening system design and scalability concepts.",
-        technical_score: result.overallScore - 5,
-        communication_score: result.overallScore + 6,
-        confidence_score: result.overallScore - 8,
-        problem_solving_score: result.overallScore + 2,
-        top_strength: "Structured explanations and clear reasoning",
-        critical_gap: "System design and scalability",
-        next_steps: ["Complete 10 LeetCode medium problems", "Study system design fundamentals", "Practice behavioral STAR method answers"],
-        resources: [{ title: "System Design Primer", type: "GitHub" }, { title: "Neetcode 150", type: "Course" }],
-        hiring_verdict: result.overallScore >= 75 ? "Strong candidate — ready to interview" : "Good foundation — 2–3 weeks of targeted prep recommended",
+Scores per question: ${JSON.stringify(result.scores)}
+Overall score: ${result.overallScore}%
+Speech clarity avg: ${result.avgClarity||"N/A"}
+Confidence avg: ${result.avgConfidence||"N/A"}
+Total fillers: ${result.totalFillers||0}`}],
+      "claude-haiku-4-5-20251001", 1200);
+      const parsed=parseJSON(text);
+      if(parsed) setReport(parsed); else throw new Error();
+    }catch{
+      setReport({
+        summary:"You demonstrated solid foundational knowledge with consistent performance. Focus on deepening specific domain expertise and adding quantifiable outcomes to your answers.",
+        technical_score:result.overallScore-5,communication_score:result.overallScore+6,
+        confidence_score:result.overallScore-8,problem_solving_score:result.overallScore+2,
+        top_strength:"Structured explanations and clear reasoning",
+        critical_gap:"Quantifying impact and outcomes",
+        next_steps:["Research the STAR method and practice 3 answers","Add numbers to every achievement on your resume","Schedule a practice session with Ava tomorrow"],
+        resources:[{title:"STAR Method Guide",type:"Article"},{title:"Interview Prep Roadmap",type:"Course"}],
+        hiring_verdict:result.overallScore>=75?"Strong candidate — ready to interview":"Good foundation — 2 weeks targeted prep recommended",
+        ava_closing:"You showed real potential today! Every interview is practice, and you're getting stronger. Come back tomorrow and let's work on the areas we identified. You've got this! 🌟",
       });
     }
     setLoading(false);
   };
 
-  const ScoreBar = ({ label, value }) => (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-        <span style={{ fontSize: 13, color: COLORS.textSecondary }}>{label}</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: value >= 80 ? COLORS.green : value >= 60 ? COLORS.amber : COLORS.red }}>{value}%</span>
+  const speakAvaClosing=()=>{
+    if(!report?.ava_closing||!window.speechSynthesis)return;
+    window.speechSynthesis.cancel();
+    const utt=new SpeechSynthesisUtterance(report.ava_closing);
+    utt.rate=0.9; utt.pitch=1.05;
+    const voices=window.speechSynthesis.getVoices();
+    const fem=voices.find(v=>v.name.includes("Samantha")||v.name.includes("Karen")||v.name.toLowerCase().includes("female"));
+    if(fem)utt.voice=fem;
+    utt.onstart=()=>setAvaSpeaking(true); utt.onend=()=>setAvaSpeaking(false);
+    window.speechSynthesis.speak(utt);
+  };
+
+  const ScoreBar=({label,value})=>(
+    <div style={{marginBottom:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+        <span style={{fontSize:13,color:C.txt2}}>{label}</span>
+        <span style={{fontSize:13,fontWeight:600,color:value>=80?C.green:value>=60?C.amber:C.red}}>{value}%</span>
       </div>
-      <div style={{ height: 8, background: COLORS.border, borderRadius: 99, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${value}%`, background: value >= 80 ? COLORS.green : value >= 60 ? COLORS.amber : COLORS.red, borderRadius: 99, transition: "width 1s cubic-bezier(.4,0,.2,1) 0.3s" }} />
+      <div style={{height:8,background:C.border,borderRadius:99,overflow:"hidden"}}>
+        <div style={{height:"100%",width:`${value}%`,background:value>=80?C.green:value>=60?C.amber:C.red,
+          borderRadius:99,transition:"width 1s cubic-bezier(.4,0,.2,1) 0.3s"}}/>
       </div>
     </div>
   );
 
-  if (loading) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 400, flexDirection: "column", gap: 16 }}>
-      <div style={{ fontSize: 40 }}>🧠</div>
-      <div style={{ color: COLORS.textSecondary }}>Generating your personalized report...</div>
-      <div style={{ color: COLORS.textMuted, fontSize: 13 }}>AI is analyzing your answers (~3,000 tokens)</div>
+  if(loading) return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:20}}>
+      <AvaAvatar speaking={false} listening={false} thinking={true} size={100}/>
+      <div style={{color:C.txt2}}>Ava is writing your performance report...</div>
     </div>
   );
 
-  return (
-    <div style={{ padding: "2rem", maxWidth: 800, margin: "0 auto" }}>
-      {/* Hero score */}
-      <Card style={{ textAlign: "center", marginBottom: "1.5rem", background: `linear-gradient(135deg, ${COLORS.bgCard}, ${COLORS.bgElevated})` }}>
-        <div style={{ fontSize: 14, color: COLORS.textSecondary, marginBottom: 8 }}>Interview Complete 🎉</div>
-        <div style={{ fontSize: 72, fontWeight: 800, color: result.overallScore >= 80 ? COLORS.green : result.overallScore >= 60 ? COLORS.amber : COLORS.red, lineHeight: 1 }}>{result.overallScore}</div>
-        <div style={{ color: COLORS.textSecondary, fontSize: 14, marginTop: 8 }}>Overall Score</div>
-        <div style={{ marginTop: 16, padding: "10px 20px", background: COLORS.bgElevated, borderRadius: 10, display: "inline-block" }}>
-          <span style={{ color: COLORS.accent, fontWeight: 600, fontSize: 14 }}>{reportData?.hiring_verdict}</span>
+  return(
+    <div style={{padding:"2rem",maxWidth:820,margin:"0 auto",fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+      {/* Hero */}
+      <Card style={{textAlign:"center",marginBottom:"1.5rem"}}>
+        <div style={{fontSize:14,color:C.txt2,marginBottom:6}}>Interview Complete 🎉</div>
+        <div style={{fontSize:72,fontWeight:800,lineHeight:1,
+          color:result.overallScore>=80?C.green:result.overallScore>=60?C.amber:C.red}}>
+          {result.overallScore}
         </div>
-        <p style={{ color: COLORS.textSecondary, fontSize: 14, lineHeight: 1.6, marginTop: 16, maxWidth: 500, margin: "16px auto 0" }}>{reportData?.summary}</p>
+        <div style={{color:C.txt2,fontSize:14,marginTop:6}}>Overall Score</div>
+        <div style={{marginTop:14,padding:"10px 20px",background:C.elevated,borderRadius:10,display:"inline-block"}}>
+          <span style={{color:C.accent,fontWeight:600,fontSize:14}}>{report?.hiring_verdict}</span>
+        </div>
+        <p style={{color:C.txt2,fontSize:14,lineHeight:1.6,marginTop:14,maxWidth:500,margin:"14px auto 0"}}>{report?.summary}</p>
       </Card>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
-        {/* Skill breakdown */}
+      {/* Ava closing message */}
+      <Card style={{marginBottom:"1.5rem",borderColor:`${C.accent}44`}}>
+        <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+          <AvaAvatar speaking={avaSpeaking} listening={false} thinking={false} size={64}/>
+          <div style={{flex:1}}>
+            <div style={{color:C.accent,fontSize:11,fontWeight:600,marginBottom:6}}>AVA SAYS</div>
+            <p style={{color:C.txt,fontSize:14,margin:0,lineHeight:1.65,fontStyle:"italic"}}>"{report?.ava_closing}"</p>
+            <button onClick={speakAvaClosing} style={{marginTop:8,background:"none",border:"none",color:C.accent,cursor:"pointer",fontSize:12}}>🔊 Hear from Ava</button>
+          </div>
+        </div>
+      </Card>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1.5rem",marginBottom:"1.5rem"}}>
         <Card>
-          <h3 style={{ color: COLORS.textPrimary, margin: "0 0 1.2rem", fontSize: 15 }}>Skill Breakdown</h3>
-          <ScoreBar label="Technical depth" value={reportData?.technical_score || 0} />
-          <ScoreBar label="Communication" value={reportData?.communication_score || 0} />
-          <ScoreBar label="Confidence" value={reportData?.confidence_score || 0} />
-          <ScoreBar label="Problem solving" value={reportData?.problem_solving_score || 0} />
-          {result.avgClarity != null && (
+          <h3 style={{color:C.txt,margin:"0 0 1.2rem",fontSize:15}}>Skill Breakdown</h3>
+          <ScoreBar label="Technical depth" value={report?.technical_score||0}/>
+          <ScoreBar label="Communication" value={report?.communication_score||0}/>
+          <ScoreBar label="Confidence" value={report?.confidence_score||0}/>
+          <ScoreBar label="Problem solving" value={report?.problem_solving_score||0}/>
+          {result.avgClarity!=null&&(
             <>
-              <div style={{ borderTop: `1px solid ${COLORS.border}`, margin: "12px 0", paddingTop: 12 }}>
-                <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Speech analytics</div>
+              <div style={{borderTop:`1px solid ${C.border}`,margin:"12px 0",paddingTop:12}}>
+                <div style={{fontSize:11,color:C.txt3,marginBottom:10,textTransform:"uppercase",letterSpacing:"0.05em"}}>Speech analytics</div>
               </div>
-              <ScoreBar label="Speech clarity" value={result.avgClarity} />
-              <ScoreBar label="Confidence tone" value={result.avgConfidence} />
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, padding: "8px 12px", background: result.totalFillers === 0 ? COLORS.greenSoft : result.totalFillers <= 5 ? COLORS.amberSoft : COLORS.redSoft, borderRadius: 8 }}>
-                <span style={{ fontSize: 13, color: COLORS.textSecondary }}>Total filler words</span>
-                <span style={{ fontSize: 16, fontWeight: 700, color: result.totalFillers === 0 ? COLORS.green : result.totalFillers <= 5 ? COLORS.amber : COLORS.red }}>{result.totalFillers}</span>
+              <ScoreBar label="Speech clarity" value={result.avgClarity}/>
+              <ScoreBar label="Confidence tone" value={result.avgConfidence}/>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8,padding:"7px 10px",
+                background:result.totalFillers===0?C.greenSoft:result.totalFillers<=5?C.amberSoft:C.redSoft,borderRadius:8}}>
+                <span style={{fontSize:13,color:C.txt2}}>Total filler words</span>
+                <span style={{fontSize:16,fontWeight:700,color:result.totalFillers===0?C.green:result.totalFillers<=5?C.amber:C.red}}>{result.totalFillers}</span>
               </div>
             </>
           )}
         </Card>
 
-        {/* Highlights */}
         <Card>
-          <h3 style={{ color: COLORS.textPrimary, margin: "0 0 1.2rem", fontSize: 15 }}>Highlights</h3>
-          <div style={{ background: COLORS.greenSoft, borderRadius: 8, padding: "0.75rem", marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: COLORS.green, fontWeight: 600, marginBottom: 4 }}>TOP STRENGTH</div>
-            <div style={{ fontSize: 13, color: COLORS.textSecondary }}>{reportData?.top_strength}</div>
+          <h3 style={{color:C.txt,margin:"0 0 1.2rem",fontSize:15}}>Highlights</h3>
+          <div style={{background:C.greenSoft,borderRadius:8,padding:"0.75rem",marginBottom:10}}>
+            <div style={{fontSize:11,color:C.green,fontWeight:600,marginBottom:4}}>TOP STRENGTH</div>
+            <div style={{fontSize:13,color:C.txt2}}>{report?.top_strength}</div>
           </div>
-          <div style={{ background: COLORS.redSoft, borderRadius: 8, padding: "0.75rem", marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: COLORS.red, fontWeight: 600, marginBottom: 4 }}>CRITICAL GAP</div>
-            <div style={{ fontSize: 13, color: COLORS.textSecondary }}>{reportData?.critical_gap}</div>
+          <div style={{background:C.redSoft,borderRadius:8,padding:"0.75rem",marginBottom:10}}>
+            <div style={{fontSize:11,color:C.red,fontWeight:600,marginBottom:4}}>CRITICAL GAP</div>
+            <div style={{fontSize:13,color:C.txt2}}>{report?.critical_gap}</div>
           </div>
-          <div style={{ background: COLORS.bgElevated, borderRadius: 8, padding: "0.75rem" }}>
-            <div style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: 600, marginBottom: 4 }}>Q-BY-Q SCORES</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {result.scores.map((s, i) => (
-                <div key={i} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 6, background: s >= 80 ? COLORS.greenSoft : s >= 60 ? COLORS.amberSoft : COLORS.redSoft, color: s >= 80 ? COLORS.green : s >= 60 ? COLORS.amber : COLORS.red }}>Q{i + 1}: {s}</div>
+          <div style={{background:C.elevated,borderRadius:8,padding:"0.75rem"}}>
+            <div style={{fontSize:11,color:C.txt2,fontWeight:600,marginBottom:6}}>Q-BY-Q SCORES</div>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+              {result.scores.map((s,i)=>(
+                <div key={i} style={{fontSize:11,padding:"3px 8px",borderRadius:6,
+                  background:s>=80?C.greenSoft:s>=60?C.amberSoft:C.redSoft,
+                  color:s>=80?C.green:s>=60?C.amber:C.red}}>Q{i+1}: {s}</div>
               ))}
             </div>
           </div>
@@ -1583,188 +1268,97 @@ Overall: ${result.overallScore}%`;
       </div>
 
       {/* Next steps */}
-      <Card style={{ marginBottom: "1.5rem" }}>
-        <h3 style={{ color: COLORS.textPrimary, margin: "0 0 1rem", fontSize: 15 }}>🗺 Your Learning Path</h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "1rem" }}>
-          {reportData?.next_steps?.map((s, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", background: COLORS.bgElevated, borderRadius: 8 }}>
-              <span style={{ color: COLORS.accent, fontWeight: 700, fontSize: 13, minWidth: 20 }}>{i + 1}.</span>
-              <span style={{ color: COLORS.textSecondary, fontSize: 13 }}>{s}</span>
+      <Card style={{marginBottom:"1.5rem"}}>
+        <h3 style={{color:C.txt,margin:"0 0 1rem",fontSize:15}}>🗺 Your Learning Path from Ava</h3>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:"1rem"}}>
+          {report?.next_steps?.map((s,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",background:C.elevated,borderRadius:8}}>
+              <span style={{color:C.accent,fontWeight:700,fontSize:13,minWidth:20}}>{i+1}.</span>
+              <span style={{color:C.txt2,fontSize:13}}>{s}</span>
             </div>
           ))}
         </div>
-        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: "1rem" }}>
-          <div style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 8 }}>Recommended resources</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {reportData?.resources?.map(r => (
-              <span key={r.title} style={{ fontSize: 12, padding: "4px 10px", borderRadius: 8, background: COLORS.accentSoft, color: COLORS.accent, border: `1px solid ${COLORS.accent}33` }}>📚 {r.title} <span style={{ opacity: 0.6 }}>({r.type})</span></span>
+        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:"0.85rem"}}>
+          <div style={{color:C.txt2,fontSize:12,marginBottom:8}}>Recommended resources</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {report?.resources?.map(r=>(
+              <span key={r.title} style={{fontSize:12,padding:"4px 10px",borderRadius:8,background:C.accentSoft,color:C.accent,border:`1px solid ${C.accent}33`}}>
+                📚 {r.title} <span style={{opacity:0.6}}>({r.type})</span>
+              </span>
             ))}
           </div>
         </div>
       </Card>
 
-      {/* Actions */}
-      <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+      <div style={{display:"flex",gap:10,justifyContent:"center"}}>
         <Btn variant="ghost" onClick={onDashboard}>← Dashboard</Btn>
-        <Btn onClick={onRetry}>🔄 Practice Again</Btn>
-        <Btn variant="success" onClick={() => window.open("https://stripe.com", "_blank")}>⬆ Upgrade Plan</Btn>
+        <Btn onClick={onRetry}>🔄 Practice Again with Ava</Btn>
       </div>
     </div>
   );
 }
 
-// ─── SCREEN: PRICING ─────────────────────────────────────────────────────────
-function PricingScreen({ user, onBack }) {
-  return (
-    <div style={{ padding: "2rem", maxWidth: 900, margin: "0 auto" }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", color: COLORS.textSecondary, cursor: "pointer", fontSize: 14, marginBottom: "1.5rem" }}>← Back</button>
-      <h2 style={{ color: COLORS.textPrimary, textAlign: "center", marginBottom: 8 }}>Choose your plan</h2>
-      <p style={{ color: COLORS.textSecondary, textAlign: "center", marginBottom: "2rem", fontSize: 14 }}>Upgrade anytime. Cancel anytime. Tokens reset monthly.</p>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-        {Object.entries(PLANS).map(([key, plan]) => {
-          const isCurrent = user.plan === key;
-          const isPro = key === "pro";
-          return (
-            <div key={key} style={{
-              background: COLORS.bgCard, border: `${isPro ? 2 : 1}px solid ${isPro ? COLORS.accent : isCurrent ? COLORS.borderHover : COLORS.border}`,
-              borderRadius: 16, padding: "1.5rem", position: "relative",
-            }}>
-              {isPro && <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: COLORS.accent, color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 12px", borderRadius: 99, whiteSpace: "nowrap" }}>MOST POPULAR</div>}
-              {isCurrent && <div style={{ position: "absolute", top: 12, right: 12 }}><Badge color={COLORS.green}>Current</Badge></div>}
-              <div style={{ color: plan.color, fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{plan.name}</div>
-              <div style={{ color: COLORS.textPrimary, fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
-                {plan.price === null ? "Custom" : plan.price === 0 ? "Free" : `$${plan.price}`}
-                {plan.price > 0 && <span style={{ fontSize: 14, color: COLORS.textSecondary, fontWeight: 400 }}>/mo</span>}
-              </div>
-              <div style={{ borderTop: `1px solid ${COLORS.border}`, margin: "16px 0", paddingTop: 16 }}>
-                {[
-                  `${plan.tokens === Infinity ? "Unlimited" : fmtTokens(plan.tokens)} tokens`,
-                  `${plan.sessions === 999 ? "Unlimited" : plan.sessions} sessions`,
-                  plan.voice ? "✓ Voice interviews" : "✗ No voice",
-                  key !== "free" ? "✓ Full scorecard" : "✓ Basic report",
-                  key === "pro" || key === "enterprise" ? "✓ Learning path" : "",
-                  key === "enterprise" ? "✓ Team dashboard" : "",
-                ].filter(Boolean).map(f => (
-                  <div key={f} style={{ fontSize: 13, color: f.startsWith("✗") ? COLORS.textMuted : COLORS.textSecondary, marginBottom: 6 }}>{f}</div>
-                ))}
-              </div>
-              <Btn
-                variant={isCurrent ? "ghost" : isPro ? "primary" : "ghost"}
-                disabled={isCurrent}
-                style={{ width: "100%" }}
-                onClick={() => !isCurrent && window.open("https://stripe.com", "_blank")}
-              >
-                {isCurrent ? "Current plan" : plan.price === null ? "Contact us" : "Upgrade →"}
-              </Btn>
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={{ marginTop: "2rem", padding: "1.5rem", background: COLORS.bgCard, borderRadius: 12, border: `1px solid ${COLORS.border}` }}>
-        <h4 style={{ color: COLORS.textPrimary, margin: "0 0 12px", fontSize: 14 }}>💡 Token top-ups — no plan change needed</h4>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {[["100K tokens", "$2"], ["500K tokens", "$8"], ["1M tokens", "$14"]].map(([t, p]) => (
-            <Btn key={t} variant="ghost" style={{ fontSize: 13 }} onClick={() => window.open("https://stripe.com", "_blank")}>+ {t} for {p}</Btn>
-          ))}
+// ─── NAV ──────────────────────────────────────────────────────────────────────
+function Nav({user,screen,onNav}){
+  if(!user||screen==="auth")return null;
+  const plan=PLANS[user.plan];
+  const p=pct(user.tokensUsed,plan.tokens);
+  const color=barC(p);
+  return(
+    <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"0 1.5rem",
+      display:"flex",alignItems:"center",justifyContent:"space-between",height:54,
+      position:"sticky",top:0,zIndex:100}}>
+      <div style={{display:"flex",alignItems:"center",gap:16}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>onNav("dashboard")}>
+          <AvaAvatar speaking={false} listening={false} thinking={false} size={28}/>
+          <span style={{color:C.txt,fontWeight:700,fontSize:15}}>InterviewAI</span>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── SCREEN: DB SCHEMA ────────────────────────────────────────────────────────
-function SchemaScreen({ onBack }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => { navigator.clipboard.writeText(SCHEMA_SQL); setCopied(true); setTimeout(() => setCopied(false), 2000); };
-  return (
-    <div style={{ padding: "2rem", maxWidth: 800, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", color: COLORS.textSecondary, cursor: "pointer", fontSize: 14 }}>← Back</button>
-        <Btn onClick={copy} variant="ghost" style={{ fontSize: 13 }}>{copied ? "✓ Copied!" : "📋 Copy SQL"}</Btn>
-      </div>
-      <Card>
-        <h3 style={{ color: COLORS.textPrimary, margin: "0 0 1rem", fontSize: 16 }}>Supabase Schema</h3>
-        <p style={{ color: COLORS.textSecondary, fontSize: 13, marginBottom: "1rem" }}>Run this in your Supabase SQL editor to set up the full database with token tracking, RLS policies, and the monthly reset function.</p>
-        <pre style={{ background: COLORS.bg, borderRadius: 10, padding: "1.2rem", overflowX: "auto", fontSize: 12, color: COLORS.textSecondary, lineHeight: 1.7, border: `1px solid ${COLORS.border}`, margin: 0, whiteSpace: "pre-wrap" }}>{SCHEMA_SQL}</pre>
-      </Card>
-    </div>
-  );
-}
-
-// ─── NAV BAR ─────────────────────────────────────────────────────────────────
-function NavBar({ user, screen, onNav }) {
-  if (!user || screen === "landing") return null;
-  const plan = PLANS[user.plan];
-  const pct = fmtPct(user.tokensUsed, plan.tokens);
-  const barColor = tokenBarColor(pct);
-
-  return (
-    <div style={{ background: COLORS.bgCard, borderBottom: `1px solid ${COLORS.border}`, padding: "0 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56, position: "sticky", top: 0, zIndex: 100 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => onNav("dashboard")}>
-          <span style={{ fontSize: 20 }}>🎯</span>
-          <span style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 15 }}>InterviewAI</span>
-        </div>
-        {["dashboard", "pricing"].map(s => (
-          <button key={s} onClick={() => onNav(s)} style={{ background: "none", border: "none", color: screen === s ? COLORS.textPrimary : COLORS.textSecondary, cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: screen === s ? 600 : 400, textTransform: "capitalize", padding: "4px 0" }}>
+        {["dashboard"].map(s=>(
+          <button key={s} onClick={()=>onNav(s)} style={{background:"none",border:"none",
+            color:screen===s?C.txt:C.txt2,cursor:"pointer",fontSize:13,fontFamily:"inherit",
+            fontWeight:screen===s?600:400,textTransform:"capitalize",padding:"4px 0"}}>
             {s}
           </button>
         ))}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        {plan.tokens !== Infinity && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 80, height: 4, background: COLORS.border, borderRadius: 99, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 99 }} />
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        {plan.tokens!==Infinity&&(
+          <div style={{display:"flex",alignItems:"center",gap:7}}>
+            <div style={{width:72,height:4,background:C.border,borderRadius:99,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${p}%`,background:color,borderRadius:99}}/>
             </div>
-            <span style={{ fontSize: 11, color: COLORS.textSecondary }}>{fmtTokens(user.tokensUsed)}/{fmtTokens(plan.tokens)}</span>
+            <span style={{fontSize:11,color:C.txt2}}>{fmtN(user.tokensUsed)}/{fmtN(plan.tokens)}</span>
           </div>
         )}
         <Badge color={plan.color}>{plan.name}</Badge>
-        <div style={{ width: 32, height: 32, borderRadius: 50, background: COLORS.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff" }}>
-          {user.name.charAt(0)}
+        <div style={{width:30,height:30,borderRadius:"50%",background:C.accent,display:"flex",
+          alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff"}}>
+          {user.name.charAt(0).toUpperCase()}
         </div>
       </div>
     </div>
   );
 }
 
-// ─── ROOT APP ─────────────────────────────────────────────────────────────────
-export default function App() {
-  const [screen, setScreen] = useState("landing");
-  const [user, setUser] = useState(null);
-  const [interviewConfig, setInterviewConfig] = useState(null);
-  const [interviewResult, setInterviewResult] = useState(null);
+// ─── ROOT ─────────────────────────────────────────────────────────────────────
+export default function App(){
+  const [screen,setScreen]=useState("auth");
+  const [user,setUser]=useState(null);
+  const [config,setConfig]=useState(null);
+  const [result,setResult]=useState(null);
 
-  const handleEnter = (u) => {
-    setUser({ ...u, sessionsUsed: 4 });
-    setScreen("dashboard");
-  };
+  const handleEnter=u=>{ setUser({...u,sessionsUsed:u.sessionsUsed||0}); setScreen("dashboard"); };
+  const handleBegin=cfg=>{ setConfig(cfg); setUser(u=>({...u,tokensUsed:(u.tokensUsed||0)+3500})); setScreen("interview"); };
+  const handleComplete=r=>{ setResult(r); setUser(u=>({...u,tokensUsed:(u.tokensUsed||0)+r.scores.length*1200+3000,sessionsUsed:(u.sessionsUsed||0)+1})); setScreen("report"); };
 
-  const handleBegin = (config) => {
-    setInterviewConfig(config);
-    setUser(u => ({ ...u, tokensUsed: (u.tokensUsed || 0) + TOKEN_COSTS.resume_parse + TOKEN_COSTS.question_gen }));
-    setScreen("interview");
-  };
-
-  const handleComplete = (result) => {
-    setInterviewResult(result);
-    setUser(u => ({ ...u, tokensUsed: (u.tokensUsed || 0) + TOKEN_COSTS.answer_eval * result.scores.length + TOKEN_COSTS.report_gen, sessionsUsed: (u.sessionsUsed || 0) + 1 }));
-    setScreen("report");
-  };
-
-  return (
-    <div style={{ fontFamily: "'DM Sans', 'Segoe UI', system-ui, sans-serif", background: COLORS.bg, minHeight: "100vh", color: COLORS.textPrimary }}>
-      <NavBar user={user} screen={screen} onNav={(s) => setScreen(s)} />
-      {screen === "landing" && <LandingScreen onEnter={handleEnter} />}
-      {screen === "dashboard" && <DashboardScreen user={user} onStart={() => setScreen("setup")} onUpgrade={() => setScreen("pricing")} onSchema={() => setScreen("schema")} />}
-      {screen === "setup" && <SetupScreen user={user} onBegin={handleBegin} onBack={() => setScreen("dashboard")} />}
-      {screen === "interview" && interviewConfig && <InterviewScreen user={user} config={interviewConfig} onComplete={handleComplete} onBack={() => setScreen("dashboard")} />}
-      {screen === "report" && interviewResult && <ReportScreen result={interviewResult} onDashboard={() => setScreen("dashboard")} onRetry={() => setScreen("setup")} />}
-      {screen === "pricing" && <PricingScreen user={user} onBack={() => setScreen("dashboard")} />}
-      {screen === "schema" && <SchemaScreen onBack={() => setScreen("dashboard")} />}
+  return(
+    <div style={{fontFamily:"'DM Sans','Segoe UI',system-ui,sans-serif",background:C.bg,minHeight:"100vh",color:C.txt}}>
+      <Nav user={user} screen={screen} onNav={s=>setScreen(s)}/>
+      {screen==="auth"     &&<AuthScreen onEnter={handleEnter}/>}
+      {screen==="dashboard"&&<DashboardScreen user={user} onStart={()=>setScreen("setup")} onUpgrade={()=>setScreen("dashboard")}/>}
+      {screen==="setup"    &&<SetupScreen user={user} onBegin={handleBegin} onBack={()=>setScreen("dashboard")}/>}
+      {screen==="interview"&&config&&<InterviewScreen user={user} config={config} onComplete={handleComplete} onBack={()=>setScreen("dashboard")}/>}
+      {screen==="report"   &&result&&<ReportScreen result={result} onDashboard={()=>setScreen("dashboard")} onRetry={()=>setScreen("setup")}/>}
     </div>
   );
 }
