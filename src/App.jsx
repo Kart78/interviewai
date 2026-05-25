@@ -1,37 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
+import { createClient } from '@supabase/supabase-js';
+
 // ─── SUPABASE CLIENT ──────────────────────────────────────────────────────────
-// Install: npm install @supabase/supabase-js
-// Then uncomment these 3 lines and remove the mock client below:
-//
- import { createClient } from '@supabase/supabase-js';
- const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
- const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
- export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
-//
-// ── MOCK CLIENT (remove once real Supabase is connected) ──────────────────────
-/*const supabase = {
-  auth: {
-    signInWithOAuth: async ({ provider, options }) => {
-      // Real call: redirects browser to Google consent screen
-      // Returns: { data: { url }, error }
-      console.log(`[mock] signInWithOAuth provider=${provider}`, options);
-      return { data: {}, error: null };
-    },
-    signInWithPassword: async ({ email, password }) => {
-      // Real call: returns session with user object
-      console.log("[mock] signInWithPassword", email);
-      return { data: { user: { id:"mock-id", email, user_metadata:{ full_name: email.split("@")[0] } } }, error: null };
-    },
-    signUp: async ({ email, password, options }) => {
-      console.log("[mock] signUp", email, options);
-      return { data: { user: { id:"mock-id", email, user_metadata: options?.data } }, error: null };
-    },
-    signOut: async () => ({ error: null }),
-    getSession: async () => ({ data: { session: null }, error: null }),
-    onAuthStateChange: (cb) => ({ data: { subscription: { unsubscribe: ()=>{} } } }),
-  }
-};*/
+const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+
 
 // ─── DESIGN SYSTEM — World-class SaaS standards (Linear, Vercel, Stripe-inspired) ─
 // Font: Inter — #1 screen-optimized font per 2026 research
