@@ -5,7 +5,16 @@ import { createClient } from '@supabase/supabase-js';
 // ─── SUPABASE CLIENT ──────────────────────────────────────────────────────────
 const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// Guard — gives readable error instead of silent undefined createClient
+if (!SUPABASE_URL || !SUPABASE_ANON) {
+  console.error("❌ Missing Supabase env vars. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel.");
+}
+
+export const supabase = createClient(
+  SUPABASE_URL  ?? "https://placeholder.supabase.co",
+  SUPABASE_ANON ?? "placeholder-key"
+);
 
 
 // ─── DESIGN SYSTEM — World-class SaaS standards (Linear, Vercel, Stripe-inspired) ─
@@ -276,24 +285,37 @@ function AvaAvatar({ speaking, listening, thinking, size=120 }){
   );
 }
 
-// ─── CLAUDE API CALL ──────────────────────────────────────────────────────────
+// ─── CLAUDE API CALL — via Supabase Edge Function (key never in browser) ─────
 async function callClaude(messages, model="claude-haiku-4-5-20251001", maxTokens=1200){
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if(!apiKey) throw new Error("Missing VITE_ANTHROPIC_API_KEY");
-  const res = await fetch("https://api.anthropic.com/v1/messages",{
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-allow-browser": "true",
-    },
-    body:JSON.stringify({ model, max_tokens:maxTokens, messages }),
-  });
-  const data = await res.json();
-  if(data.error) throw new Error(data.error.message);
-  const text = data.content?.find(b=>b.type==="text")?.text||"";
-  return text;
+  try {
+    // Get current user session token to authenticate the edge function
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const edgeFnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-proxy`;
+
+    const res = await fetch(edgeFnUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ model, max_tokens: maxTokens, messages }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Edge function error ${res.status}: ${err}`);
+    }
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    return data.content?.find(b => b.type === "text")?.text || "";
+
+  } catch (err) {
+    console.error("callClaude failed:", err.message);
+    throw err; // Let callers fall back to their catch blocks
+  }
 }
 
 function parseJSON(text){
@@ -450,14 +472,14 @@ function AuthScreen({onEnter}){
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
+          // Must exactly match Supabase → Auth → URL Configuration → Redirect URLs
           redirectTo: "https://interviewai-ebon.vercel.app",
           queryParams: { access_type: "offline", prompt: "consent" },
         },
       });
       if (error) throw error;
-      // Browser redirects to Google then back — session handled by onAuthStateChange
     } catch (err) {
-      setError(err.message || "Google sign-in failed — check console for details");
+      setError(err.message || "Google sign-in failed");
       setLoading(false);
     }
   };
