@@ -79,6 +79,21 @@ const T = {
   label: { fontSize:11, fontWeight:600, lineHeight:1, letterSpacing:"0.08em", textTransform:"uppercase", color:C.txt3 },
 };
 
+// ─── ADMIN CONFIG ─────────────────────────────────────────────────────────────
+// Add your email here — these users get full voice + admin features
+const ADMIN_EMAILS = [
+  "kart78@gmail.com",      // owner
+  // "colleague@example.com", // add more admins here
+];
+
+const isAdmin = (email) => ADMIN_EMAILS.includes(email?.toLowerCase().trim());
+
+// Voice access rules:
+// - Admin → always enabled
+// - Starter / Pro / Enterprise → enabled
+// - Free → disabled (upsell to Starter)
+const hasVoiceAccess = (email, plan) => isAdmin(email) || plan !== "free";
+
 // ─── PLANS ───────────────────────────────────────────────────────────────────
 const PLANS = {
   free:       { name:"Free",       price:0,    tokens:50000,   sessions:3,   voice:false, color:C.txt2 },
@@ -839,7 +854,7 @@ function SetupScreen({user,onBegin,onBack}){
   const [analysis,setAnalysis]=useState(null);
 
   const plan=PLANS[user.plan];
-  const canVoice=plan.voice;
+  const canVoice=hasVoiceAccess(user.email, user.plan);
   const senLevels=industry?SENIORITY[industry]:["Entry-Level","Mid-Level","Senior","Lead","Director"];
   const finalRole=role==="__custom__"?customRole:role;
 
@@ -1023,7 +1038,9 @@ Job Description: ${jd||"Not provided"}`}]);
                     Ava speaks questions aloud, you answer by voice — with live speech analytics
                   </div>
                 </div>
-                {canVoice?<Badge color={C.green} size="md">Enabled</Badge>:<Badge color={C.txt3} size="md">Starter+ only</Badge>}
+                {canVoice
+                  ? <Badge color={C.green} size="md">{isAdmin(user.email)?"Admin — Enabled":"Enabled"}</Badge>
+                  : <Badge color={C.txt3} size="md">Starter+ only</Badge>}
               </div>
             </div>
             <div style={{display:"flex", justifyContent:"space-between"}}>
@@ -1217,7 +1234,15 @@ Requirements:
     setAnswer(""); setInterimTranscript(""); setFeedback(null); setCoachTip(""); setTimeLeft(120); setTimerActive(false);
     setAvaListening(false);
 
-    const startListening=()=>{ setTimerActive(true); setAvaListening(true); setAvaMessage("I'm listening — take your time, structure your answer, and speak confidently."); };
+    const startListening=()=>{
+      setTimerActive(true);
+      setAvaListening(true);
+      setAvaMessage("I'm listening — take your time, structure your answer, and speak confidently.");
+      // Auto-start mic after Ava finishes speaking (Chrome/Edge only)
+      if(window.SpeechRecognition||window.webkitSpeechRecognition){
+        setTimeout(()=>{ toggleListenAuto(); }, 300);
+      }
+    };
 
     if(qIdx===0){
       // Warm welcome intro before first question
@@ -1267,10 +1292,9 @@ Requirements:
   },[answer,feedback]);
 
   // ── Voice recording ──
-  const toggleListen=()=>{
-    if(!window.SpeechRecognition&&!window.webkitSpeechRecognition)return alert("Use Chrome or Edge for voice features");
-    if(listening){ recognitionRef.current?.stop(); setListening(false); setInterimTranscript(""); return; }
+  const startRecognition=()=>{
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR)return;
     const rec=new SR();
     rec.continuous=true; rec.interimResults=true; rec.lang="en-US";
     rec.onresult=e=>{
@@ -1279,7 +1303,21 @@ Requirements:
       if(fin)setAnswer(fin.trim()); setInterimTranscript(int);
     };
     rec.onend=()=>{ setListening(false); setInterimTranscript(""); };
+    rec.onerror=()=>{ setListening(false); setInterimTranscript(""); };
     rec.start(); recognitionRef.current=rec; setListening(true);
+  };
+
+  // Auto-start mic (called after Ava finishes speaking)
+  const toggleListenAuto=()=>{
+    if(listening)return; // already recording
+    startRecognition();
+  };
+
+  const toggleListen=()=>{
+    if(!window.SpeechRecognition&&!window.webkitSpeechRecognition)
+      return alert("Voice features require Chrome or Edge browser");
+    if(listening){ recognitionRef.current?.stop(); setListening(false); setInterimTranscript(""); return; }
+    startRecognition();
   };
 
   // ── Evaluate answer with real AI ──
@@ -1410,49 +1448,103 @@ Speech: ${stats.fillerCount} fillers, clarity ${stats.clarityScore}/100, confide
           {/* Answer */}
           {!feedback&&(
             <Card style={{marginBottom:"0.75rem"}}>
-              {config.voiceEnabled&&(
-                <div style={{marginBottom:10}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      {listening&&<div style={{width:7,height:7,borderRadius:"50%",background:C.red,animation:"pulse 1s infinite"}}/>}
-                      <span style={{color:C.txt2,fontSize:12}}>{listening?"Recording...":"Your answer"}</span>
-                    </div>
-                    <button onClick={toggleListen} style={{
-                      display:"flex",alignItems:"center",gap:6,padding:"7px 16px",borderRadius:8,
-                      border:`1px solid ${listening?C.red:C.accent}`,
-                      background:listening?C.redSoft:C.accentSoft,
-                      color:listening?C.red:C.accent,cursor:"pointer",fontSize:13,fontFamily:F,fontWeight:600}}>
-                      {listening?"⏹ Stop":"🎙 Speak"}
-                    </button>
+              {/* ── BIG MIC BUTTON — primary interaction ── */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12,marginBottom:16}}>
+                {/* Main mic button */}
+                <button onClick={toggleListen}
+                  aria-label={listening?"Stop recording":"Start speaking"}
+                  style={{
+                    width:80, height:80, borderRadius:"50%",
+                    border:`3px solid ${listening?C.red:avaListening?C.green:C.borderMid}`,
+                    background:listening?C.redSoft:avaListening?C.greenSoft:C.elevated,
+                    cursor:"pointer", fontSize:32,
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    transition:"all 0.2s",
+                    boxShadow:listening?`0 0 24px ${C.red}55`:avaListening?`0 0 24px ${C.green}44`:"none",
+                    animation:listening?"micPulse 1.5s ease-in-out infinite":"none",
+                  }}>
+                  {listening?"⏹":"🎙"}
+                </button>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:14,fontWeight:600,color:listening?C.red:avaListening?C.green:C.txt2}}>
+                    {listening?"Listening — tap to stop":"Tap to speak your answer"}
                   </div>
-                  <div style={{display:"flex",alignItems:"center",gap:2,height:34,padding:"0 6px",background:C.elevated,borderRadius:8}}>
+                  <div style={{fontSize:12,color:C.txt3,marginTop:3}}>
+                    {listening?"Ava is hearing you...":"or type below"}
+                  </div>
+                </div>
+
+                {/* Waveform — only shown while listening */}
+                {listening&&(
+                  <div style={{display:"flex",alignItems:"center",gap:2,height:36,width:"100%",maxWidth:300,padding:"0 8px",background:C.elevated,borderRadius:10}}>
                     {waveBars.map((h,i)=>(
-                      <div key={i} style={{flex:1,height:h,background:listening?C.accent:C.border,borderRadius:99,transition:listening?"height 0.08s":"height 0.5s",opacity:listening?0.7+i%3*0.1:0.4}}/>
+                      <div key={i} style={{flex:1,height:h,background:C.accent,borderRadius:99,transition:"height 0.08s",opacity:0.7+i%3*0.1}}/>
                     ))}
                   </div>
-                  {interimTranscript&&<div style={{fontSize:12,color:C.txt3,marginTop:5,fontStyle:"italic",padding:"4px 8px",background:C.elevated,borderRadius:6}}>{interimTranscript}</div>}
+                )}
+
+                {/* Interim transcript — live preview */}
+                {interimTranscript&&(
+                  <div style={{fontSize:13,color:C.txt2,fontStyle:"italic",padding:"8px 14px",
+                    background:C.elevated,borderRadius:8,width:"100%",textAlign:"center",lineHeight:1.5}}>
+                    "{interimTranscript}"
+                  </div>
+                )}
+              </div>
+
+              {/* Transcript / text area */}
+              {(answer||!listening)&&(
+                <div style={{marginBottom:10}}>
+                  {answer&&(
+                    <div style={{fontSize:12,color:C.txt3,marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{width:6,height:6,borderRadius:"50%",background:C.green,display:"inline-block"}}/>
+                      Transcript captured
+                    </div>
+                  )}
+                  <textarea value={answer} onChange={e=>setAnswer(e.target.value)}
+                    placeholder="Your spoken answer appears here — or type directly..."
+                    style={{width:"100%",minHeight:90,padding:"12px",background:C.elevated,
+                      border:`1px solid ${answer?C.borderMid:C.border}`,borderRadius:10,
+                      color:C.txt,fontSize:14,fontFamily:F,resize:"vertical",
+                      outline:"none",boxSizing:"border-box",lineHeight:1.65}}/>
                 </div>
               )}
-              <textarea value={answer} onChange={e=>setAnswer(e.target.value)}
-                placeholder={config.voiceEnabled?"Speak your answer or type here...":"Type your answer — structure, examples, outcomes..."}
-                style={{width:"100%",minHeight:120,padding:"12px",background:C.elevated,border:`1px solid ${C.border}`,borderRadius:10,color:C.txt,fontSize:13,fontFamily:F,resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.65}}/>
+
               {/* Live coaching tip from Ava */}
               {coachTip&&(
-                <div style={{marginTop:8,padding:"8px 12px",background:C.accentSoft,border:`1px solid ${C.accent}33`,borderRadius:8,fontSize:12,color:C.txt2,display:"flex",gap:8,alignItems:"flex-start"}}>
-                  <AvaAvatar speaking={false} listening={false} thinking={false} size={24}/>
-                  <span>{coachTip}</span>
+                <div style={{marginBottom:10,padding:"10px 14px",background:C.accentSoft,
+                  border:`1px solid ${C.accent}33`,borderRadius:10,
+                  display:"flex",gap:10,alignItems:"flex-start"}}>
+                  <AvaAvatar speaking={false} listening={false} thinking={false} size={28}/>
+                  <div>
+                    <div style={{fontSize:11,fontWeight:600,color:C.accent,letterSpacing:"0.05em",textTransform:"uppercase",marginBottom:3}}>Ava coaching tip</div>
+                    <span style={{fontSize:13,color:C.txt2,lineHeight:1.5}}>{coachTip}</span>
+                  </div>
                 </div>
               )}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
-                <span style={{fontSize:11,color:C.txt3}}>{answer.trim().split(/\s+/).filter(Boolean).length} words</span>
+
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:12,color:C.txt3,fontWeight:500}}>
+                  {answer.trim().split(/\s+/).filter(Boolean).length} words
+                </span>
                 <div style={{display:"flex",gap:8}}>
                   <Btn variant="ghost" onClick={()=>{
-                  if(scores.length===qIdx){ setScores(prev=>[...prev,0]); setAnswers(prev=>[...prev,"(skipped)"]); }
-                  nextQuestion();
-                }} style={{fontSize:12,padding:"7px 14px"}}>Skip →</Btn>
-                  <Btn onClick={evaluateAnswer} disabled={!answer.trim()||loadingEval}>{loadingEval?"Ava is evaluating...":"Submit Answer →"}</Btn>
+                    if(scores.length===qIdx){ setScores(prev=>[...prev,0]); setAnswers(prev=>[...prev,"(skipped)"]); }
+                    nextQuestion();
+                  }} style={{fontSize:13,padding:"8px 16px"}}>Skip →</Btn>
+                  <Btn onClick={evaluateAnswer} disabled={!answer.trim()||loadingEval}
+                    style={{fontSize:14,padding:"10px 20px"}}>
+                    {loadingEval?"Ava is evaluating...":"Submit Answer →"}
+                  </Btn>
                 </div>
               </div>
+
+              <style>{`
+                @keyframes micPulse {
+                  0%,100%{box-shadow:0 0 0 0 ${C.red}44}
+                  50%{box-shadow:0 0 0 12px ${C.red}00}
+                }
+              `}</style>
             </Card>
           )}
 
@@ -1867,6 +1959,9 @@ function Nav({user,screen,onNav,onLogout}){
           </div>
         )}
         <Badge color={plan.color}>{plan.name}</Badge>
+        {isAdmin(user.email)&&(
+          <Badge color={C.amber}>Admin</Badge>
+        )}
 
         {/* Profile avatar — clickable */}
         <div style={{position:"relative"}} ref={profileRef}>
