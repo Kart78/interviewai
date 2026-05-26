@@ -435,11 +435,18 @@ function AuthScreen({onEnter}){
   const [name,setName]=useState("");
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
+  const [success,setSuccess]=useState("");
+  const [showForgot,setShowForgot]=useState(false);
+  const [forgotEmail,setForgotEmail]=useState("");
+  const [forgotLoading,setForgotLoading]=useState(false);
 
   const handleAuth = async () => {
-    if (!email.trim() || !password.trim()) return setError("Please fill in all fields");
+    // Fix: check each field individually with clear messages
+    if (!email.trim()) return setError("Please enter your email address");
+    if (!password.trim()) return setError("Please enter your password");
     if (tab === "signup" && !name.trim()) return setError("Please enter your full name");
-    setError(""); setLoading(true);
+    if (tab === "signup" && password.length < 8) return setError("Password must be at least 8 characters");
+    setError(""); setSuccess(""); setLoading(true);
     try {
       if (tab === "signup") {
         const { data, error } = await supabase.auth.signUp({
@@ -448,31 +455,50 @@ function AuthScreen({onEnter}){
           options: { data: { full_name: name.trim() } },
         });
         if (error) throw error;
-        if (data.user) {
+        if (data.user && data.session) {
           onEnter({ name: name.trim(), email: email.trim(), plan: "free", tokensUsed: 0, sessionsUsed: 0 });
         } else {
-          setError("Check your email to confirm your account, then sign in.");
+          setSuccess("✓ Check your email for a confirmation link, then sign in.");
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
-        const displayName = data.user?.user_metadata?.full_name || email.split("@")[0];
+        const displayName = data.user?.user_metadata?.full_name || data.user?.user_metadata?.name || email.split("@")[0];
         onEnter({ name: displayName, email: email.trim(), plan: "free", tokensUsed: 0, sessionsUsed: 0, id: data.user?.id });
       }
     } catch (err) {
-      setError(err.message || "Authentication failed — please try again");
+      // Friendlier error messages
+      const msg = err.message || "";
+      if (msg.includes("Invalid login")) setError("Incorrect email or password — please try again");
+      else if (msg.includes("Email not confirmed")) setError("Please confirm your email first — check your inbox");
+      else if (msg.includes("already registered")) setError("This email is already registered — try signing in instead");
+      else setError(msg || "Something went wrong — please try again");
     }
     setLoading(false);
   };
 
+  const handleForgotPassword = async () => {
+    if (!forgotEmail.trim()) return setError("Please enter your email address");
+    setForgotLoading(true); setError("");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+        redirectTo: "https://interviewai-ebon.vercel.app",
+      });
+      if (error) throw error;
+      setSuccess("✓ Password reset email sent! Check your inbox.");
+      setShowForgot(false);
+    } catch (err) {
+      setError(err.message || "Failed to send reset email");
+    }
+    setForgotLoading(false);
+  };
+
   const handleGoogle = async () => {
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          // Must exactly match Supabase → Auth → URL Configuration → Redirect URLs
           redirectTo: "https://interviewai-ebon.vercel.app",
           queryParams: { access_type: "offline", prompt: "consent" },
         },
@@ -487,14 +513,12 @@ function AuthScreen({onEnter}){
   return(
     <div style={{minHeight:"100vh", background:C.bg, display:"flex", alignItems:"center",
       justifyContent:"center", padding:"2rem", fontFamily:F}}>
-      {/* Ambient glow */}
       <div style={{position:"fixed",top:"12%",left:"50%",transform:"translateX(-50%)",
         width:700, height:350,
         background:`radial-gradient(ellipse,${C.accent}12 0%,transparent 68%)`,
         pointerEvents:"none"}}/>
 
       <div style={{width:"100%", maxWidth:440, position:"relative"}}>
-        {/* Logo block */}
         <div style={{textAlign:"center", marginBottom:"2.5rem"}}>
           <AvaAvatar speaking={false} listening={false} thinking={false} size={88}/>
           <h1 style={{...T.d2, marginTop:16, marginBottom:6}}>InterviewAI</h1>
@@ -504,96 +528,141 @@ function AuthScreen({onEnter}){
         </div>
 
         <Card style={{padding:"2rem"}}>
-          {/* Sign in / Sign up tabs */}
-          <div style={{display:"flex", background:C.bg, borderRadius:10,
-            padding:4, marginBottom:"1.5rem", gap:4}}>
-            {["signin","signup"].map(t=>(
-              <button key={t} onClick={()=>{setTab(t);setError("");}} style={{
-                flex:1, padding:"10px 16px", borderRadius:8,
-                border:"none", fontFamily:F,
-                fontSize:15, fontWeight:600, cursor:"pointer",
-                transition:"all 0.15s", lineHeight:1,
-                background:tab===t?C.elevated:"transparent",
-                color:tab===t?C.txt:C.txt3}}>
-                {t==="signin"?"Sign In":"Create Account"}
-              </button>
-            ))}
-          </div>
 
-          {/* Google OAuth */}
-          <Btn variant="google" onClick={handleGoogle} disabled={loading}
-            style={{width:"100%", marginBottom:14,
-              display:"flex", alignItems:"center", justifyContent:"center", gap:10,
-              fontSize:15, padding:"13px 22px"}}>
-            <svg width="20" height="20" viewBox="0 0 48 48" style={{flexShrink:0}}>
-              <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.6 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.1-4z"/>
-              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.8 18.9 13 24 13c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>
-              <path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.3 35.5 26.8 36 24 36c-5.3 0-9.8-3.5-11.4-8.3l-6.5 5C9.5 39.4 16.2 44 24 44z"/>
-              <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.8l6.2 5.2C41.2 35.5 44 30.1 44 24c0-1.3-.1-2.7-.4-4z"/>
-            </svg>
-            <span>{loading&&tab!=="signin"?"Connecting...":"Continue with Google"}</span>
-          </Btn>
-
-          {/* Divider */}
-          <div style={{display:"flex", alignItems:"center", gap:12, marginBottom:16}}>
-            <div style={{flex:1, height:1, background:C.border}}/>
-            <span style={{...T.caption, color:C.txt3, fontWeight:500}}>or with email</span>
-            <div style={{flex:1, height:1, background:C.border}}/>
-          </div>
-
-          {/* Form fields */}
-          <div style={{display:"flex", flexDirection:"column", gap:12}}>
-            {tab==="signup"&&(
-              <div>
-                <label style={{...T.uiSm, display:"block", marginBottom:6, color:C.txt2, fontWeight:600}}>
-                  Full name
-                </label>
-                <input placeholder="Jane Smith" value={name}
-                  onChange={e=>setName(e.target.value)} style={inputCss}/>
-              </div>
-            )}
+          {/* ── FORGOT PASSWORD FORM ── */}
+          {showForgot ? (
             <div>
-              <label style={{...T.uiSm, display:"block", marginBottom:6, color:C.txt2, fontWeight:600}}>
-                Email address
-              </label>
-              <input placeholder="you@example.com" value={email} type="email"
-                onChange={e=>setEmail(e.target.value)} style={inputCss}/>
-            </div>
-            <div>
-              <label style={{...T.uiSm, display:"block", marginBottom:6, color:C.txt2, fontWeight:600}}>
-                Password
-              </label>
-              <input placeholder="Min. 8 characters" value={password} type="password"
-                onChange={e=>setPassword(e.target.value)} style={inputCss}
-                onKeyDown={e=>e.key==="Enter"&&handleAuth()}/>
-            </div>
-            {error&&(
-              <div style={{background:C.redSoft, border:`1px solid ${C.redMid}`,
-                borderRadius:8, padding:"10px 14px",
-                ...T.uiSm, color:C.red, fontWeight:500}}>
-                ⚠ {error}
+              <div style={{display:"flex", alignItems:"center", gap:10, marginBottom:"1.5rem"}}>
+                <button onClick={()=>{setShowForgot(false);setError("");setSuccess("");}}
+                  style={{background:"none",border:"none",color:C.txt2,cursor:"pointer",fontSize:18,lineHeight:1}}>←</button>
+                <h3 style={{...T.h3, margin:0}}>Reset your password</h3>
               </div>
-            )}
-            <Btn onClick={handleAuth} disabled={loading}
-              style={{width:"100%", padding:"14px 22px", fontSize:16, marginTop:4}}>
-              {loading?"Please wait…":tab==="signin"?"Sign In →":"Create Free Account →"}
-            </Btn>
-          </div>
+              <p style={{...T.uiSm, color:C.txt2, marginBottom:"1.25rem", lineHeight:1.6}}>
+                Enter your email and we'll send you a link to reset your password. Completely free — powered by Supabase.
+              </p>
+              <div style={{display:"flex", flexDirection:"column", gap:12}}>
+                <div>
+                  <label style={{...T.uiSm, display:"block", marginBottom:6, color:C.txt2, fontWeight:600}}>
+                    Email address
+                  </label>
+                  <input placeholder="you@example.com" value={forgotEmail} type="email"
+                    onChange={e=>setForgotEmail(e.target.value)} style={inputCss}
+                    onKeyDown={e=>e.key==="Enter"&&handleForgotPassword()}
+                    autoFocus/>
+                </div>
+                {error&&(
+                  <div style={{background:C.redSoft, border:`1px solid ${C.redMid}`,
+                    borderRadius:8, padding:"10px 14px", ...T.uiSm, color:C.red, fontWeight:500}}>
+                    ⚠ {error}
+                  </div>
+                )}
+                {success&&(
+                  <div style={{background:C.greenSoft, border:`1px solid ${C.greenMid}`,
+                    borderRadius:8, padding:"10px 14px", ...T.uiSm, color:C.green, fontWeight:500}}>
+                    {success}
+                  </div>
+                )}
+                <Btn onClick={handleForgotPassword} disabled={forgotLoading}
+                  style={{width:"100%", padding:"14px 22px", fontSize:16}}>
+                  {forgotLoading?"Sending…":"Send Reset Link →"}
+                </Btn>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Sign in / Sign up tabs */}
+              <div style={{display:"flex", background:C.bg, borderRadius:10, padding:4, marginBottom:"1.5rem", gap:4}}>
+                {["signin","signup"].map(t=>(
+                  <button key={t} onClick={()=>{setTab(t);setError("");setSuccess("");}} style={{
+                    flex:1, padding:"10px 16px", borderRadius:8, border:"none", fontFamily:F,
+                    fontSize:15, fontWeight:600, cursor:"pointer", transition:"all 0.15s", lineHeight:1,
+                    background:tab===t?C.elevated:"transparent", color:tab===t?C.txt:C.txt3}}>
+                    {t==="signin"?"Sign In":"Create Account"}
+                  </button>
+                ))}
+              </div>
 
-          <p style={{...T.uiSm, color:C.txt3, textAlign:"center", marginTop:"1.25rem"}}>
-            {tab==="signup"
-              ? "Free plan — no credit card required"
-              : <>No account?{" "}
-                  <span style={{color:C.accent, cursor:"pointer", fontWeight:600}}
-                    onClick={()=>setTab("signup")}>Sign up free</span>
-                </>
-            }
-          </p>
+              {/* Google OAuth */}
+              <Btn variant="google" onClick={handleGoogle} disabled={loading}
+                style={{width:"100%", marginBottom:14, display:"flex",
+                  alignItems:"center", justifyContent:"center", gap:10, fontSize:15, padding:"13px 22px"}}>
+                <svg width="20" height="20" viewBox="0 0 48 48" style={{flexShrink:0}}>
+                  <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.6 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.1-4z"/>
+                  <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.8 18.9 13 24 13c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>
+                  <path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.3 35.5 26.8 36 24 36c-5.3 0-9.8-3.5-11.4-8.3l-6.5 5C9.5 39.4 16.2 44 24 44z"/>
+                  <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.8l6.2 5.2C41.2 35.5 44 30.1 44 24c0-1.3-.1-2.7-.4-4z"/>
+                </svg>
+                <span>{loading?"Connecting...":"Continue with Google"}</span>
+              </Btn>
+
+              {/* Divider */}
+              <div style={{display:"flex", alignItems:"center", gap:12, marginBottom:16}}>
+                <div style={{flex:1, height:1, background:C.border}}/>
+                <span style={{...T.caption, color:C.txt3, fontWeight:500}}>or with email</span>
+                <div style={{flex:1, height:1, background:C.border}}/>
+              </div>
+
+              {/* Form fields */}
+              <div style={{display:"flex", flexDirection:"column", gap:12}}>
+                {tab==="signup"&&(
+                  <div>
+                    <label style={{...T.uiSm, display:"block", marginBottom:6, color:C.txt2, fontWeight:600}}>Full name</label>
+                    <input placeholder="Jane Smith" value={name}
+                      onChange={e=>setName(e.target.value)} style={inputCss}/>
+                  </div>
+                )}
+                <div>
+                  <label style={{...T.uiSm, display:"block", marginBottom:6, color:C.txt2, fontWeight:600}}>Email address</label>
+                  <input placeholder="you@example.com" value={email} type="email"
+                    onChange={e=>setEmail(e.target.value)} style={inputCss}/>
+                </div>
+                <div>
+                  <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6}}>
+                    <label style={{...T.uiSm, color:C.txt2, fontWeight:600}}>Password</label>
+                    {tab==="signin"&&(
+                      <button onClick={()=>{setShowForgot(true);setForgotEmail(email);setError("");setSuccess("");}}
+                        style={{background:"none", border:"none", color:C.accent,
+                          fontSize:13, fontWeight:500, cursor:"pointer", fontFamily:F}}>
+                        Forgot password?
+                      </button>
+                    )}
+                  </div>
+                  <input placeholder={tab==="signup"?"Min. 8 characters":"Your password"} value={password} type="password"
+                    onChange={e=>setPassword(e.target.value)} style={inputCss}
+                    onKeyDown={e=>e.key==="Enter"&&handleAuth()}/>
+                </div>
+                {error&&(
+                  <div style={{background:C.redSoft, border:`1px solid ${C.redMid}`,
+                    borderRadius:8, padding:"10px 14px", ...T.uiSm, color:C.red, fontWeight:500}}>
+                    ⚠ {error}
+                  </div>
+                )}
+                {success&&(
+                  <div style={{background:C.greenSoft, border:`1px solid ${C.greenMid}`,
+                    borderRadius:8, padding:"10px 14px", ...T.uiSm, color:C.green, fontWeight:500}}>
+                    {success}
+                  </div>
+                )}
+                <Btn onClick={handleAuth} disabled={loading}
+                  style={{width:"100%", padding:"14px 22px", fontSize:16, marginTop:4}}>
+                  {loading?"Please wait…":tab==="signin"?"Sign In →":"Create Free Account →"}
+                </Btn>
+              </div>
+
+              <p style={{...T.uiSm, color:C.txt3, textAlign:"center", marginTop:"1.25rem"}}>
+                {tab==="signup"
+                  ? "Free plan — no credit card required"
+                  : <>No account?{" "}
+                      <span style={{color:C.accent, cursor:"pointer", fontWeight:600}}
+                        onClick={()=>setTab("signup")}>Sign up free</span>
+                    </>
+                }
+              </p>
+            </>
+          )}
         </Card>
 
-        {/* Feature tags */}
-        <div style={{display:"flex", gap:8, flexWrap:"wrap",
-          justifyContent:"center", marginTop:"1.5rem"}}>
+        <div style={{display:"flex", gap:8, flexWrap:"wrap", justifyContent:"center", marginTop:"1.5rem"}}>
           {["🎙 Voice interviews","📊 Real-time scoring","🤖 Ava AI coach","🌍 All industries"].map(f=>(
             <span key={f} style={{...T.caption, color:C.txt2,
               background:C.card, border:`1px solid ${C.border}`,
@@ -707,7 +776,7 @@ function DashboardScreen({user,onStart,onUpgrade}){
           </span>
         </div>
         <div style={{display:"flex", flexDirection:"column", gap:8}}>
-          {recent.map((s,i)=>(
+          {user.sessionsUsed>0&&recent.map((s,i)=>(
             <div key={i} style={{display:"flex", alignItems:"center",
               justifyContent:"space-between", padding:"14px 16px",
               background:C.elevated, borderRadius:12,
@@ -1056,6 +1125,15 @@ function InterviewScreen({user,config,onComplete,onBack}){
   const timerRef=useRef(null);
   const waveRef=useRef(null);
 
+  // Cleanup on unmount — stop TTS and mic
+  useEffect(()=>{
+    return()=>{
+      window.speechSynthesis?.cancel();
+      recognitionRef.current?.stop();
+      clearTimeout(timerRef.current);
+    };
+  },[]);
+
   const liveText=answer+(interimTranscript?" "+interimTranscript:"");
   const currentQ=questions[qIdx]||"";
   const isLast=qIdx===questions.length-1&&questions.length>0;
@@ -1133,31 +1211,60 @@ Requirements:
     window.speechSynthesis.speak(utt);
   },[config.voiceEnabled]);
 
-  // ── Ask question when question changes ──
+  // ── Ask question when question changes — Ava speaks proactively ──
   useEffect(()=>{
     if(!currentQ||loadingQ)return;
-    setAnswer(""); setInterimTranscript(""); setFeedback(""); setCoachTip(""); setTimeLeft(120); setTimerActive(false);
+    setAnswer(""); setInterimTranscript(""); setFeedback(null); setCoachTip(""); setTimeLeft(120); setTimerActive(false);
     setAvaListening(false);
-    setAvaMessage(`Question ${qIdx+1} of ${questions.length}`);
-    speakText(currentQ,()=>{ setTimerActive(true); setAvaListening(true); setAvaMessage("I'm listening — take your time and answer confidently."); });
-  },[qIdx,currentQ,loadingQ]);
+
+    const startListening=()=>{ setTimerActive(true); setAvaListening(true); setAvaMessage("I'm listening — take your time, structure your answer, and speak confidently."); };
+
+    if(qIdx===0){
+      // Warm welcome intro before first question
+      const intro=`Hi! I'm Ava, your personal interview coach. I've prepared ${questions.length} personalised questions for you today. Take your time with each answer, and I'll give you real feedback after every response. Let's begin. Question 1. ${currentQ}`;
+      setAvaMessage("Welcome! Let's start your interview.");
+      speakText(intro, startListening);
+    } else {
+      // Encouraging bridge between questions
+      const bridges=[
+        `Great effort on that one. Now, question ${qIdx+1}. ${currentQ}`,
+        `Good. Let's keep the momentum going. Question ${qIdx+1}. ${currentQ}`,
+        `Well done. Here's your next question. ${currentQ}`,
+        `You're doing well — stay focused. Question ${qIdx+1}. ${currentQ}`,
+        `Almost there! Last question. ${currentQ}`,
+      ];
+      const bridge=isLast?bridges[4]:bridges[Math.min(qIdx-1,3)];
+      setAvaMessage(`Question ${qIdx+1} of ${questions.length}`);
+      speakText(bridge, startListening);
+    }
+  },[qIdx,currentQ,loadingQ,speakText,questions.length,isLast]);
 
   // ── Real-time Ava coaching tip as user types ──
   const coachDebounce=useRef(null);
   useEffect(()=>{
     if(answer.length<30||feedback)return;
     clearTimeout(coachDebounce.current);
-    coachDebounce.current=setTimeout(async()=>{
+    coachDebounce.current=setTimeout(()=>{
       const stats=analyzeSpeech(answer);
-      // Quick local tip — no API call
-      if(stats.fillerRate>10) setCoachTip("💡 Tip from Ava: Try to reduce filler words — pause instead of saying 'um' or 'like'.");
-      else if(stats.confidenceScore<55) setCoachTip("💡 Tip from Ava: Sound more confident — replace 'I think' with 'I would' or 'In my experience'.");
-      else if(stats.wpm>185) setCoachTip("💡 Tip from Ava: You're speaking fast — slow down to let your ideas land.");
-      else if(answer.split(/[.!?]/).filter(s=>s.trim()).length===1&&answer.length>80) setCoachTip("💡 Tip from Ava: Structure your answer — try the STAR method: Situation, Task, Action, Result.");
-      else setCoachTip("");
-    },1200);
+      const wordCount=answer.trim().split(/\s+/).filter(Boolean).length;
+      // Pick the most relevant tip — only one at a time
+      if(stats.fillerRate>12)
+        setCoachTip("💡 Ava: Great start! Try to pause briefly instead of saying 'um' or 'like' — silence is powerful in an interview.");
+      else if(stats.confidenceScore<50)
+        setCoachTip("💡 Ava: You're on the right track! Replace phrases like 'I think' or 'maybe' with 'I would' or 'In my experience' — you'll sound much more confident.");
+      else if(answer.split(/[.!?]+/).filter(s=>s.trim().length>5).length<=1&&wordCount>60)
+        setCoachTip("💡 Ava: Good content! Try the STAR method — Situation, Task, Action, Result — it gives your answer a clear structure that interviewers love.");
+      else if(wordCount<40&&wordCount>20)
+        setCoachTip("💡 Ava: Nice start! Can you add a specific example or outcome? Concrete details make answers much more memorable.");
+      else if(wordCount>200)
+        setCoachTip("💡 Ava: Great depth! Start wrapping up — aim for 1.5 to 2 minutes, then invite a follow-up if needed.");
+      else if(stats.vocabularyScore>80&&wordCount>50)
+        setCoachTip("✨ Ava: Excellent vocabulary and strong structure — this is shaping up to be a great answer!");
+      else
+        setCoachTip("");
+    },1400);
     return()=>clearTimeout(coachDebounce.current);
-  },[answer]);
+  },[answer,feedback]);
 
   // ── Voice recording ──
   const toggleListen=()=>{
@@ -1261,7 +1368,9 @@ Speech: ${stats.fillerCount} fillers, clarity ${stats.clarityScore}/100, confide
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:14}}>
-          <button onClick={()=>setShowAnalytics(s=>!s)} style={{
+          <button onClick={()=>setShowAnalytics(s=>!s)}
+          aria-label="Toggle analytics panel"
+          style={{
             background:showAnalytics?C.accentSoft:"transparent",border:`1px solid ${showAnalytics?C.accent:C.border}`,
             color:showAnalytics?C.accent:C.txt2,borderRadius:8,padding:"4px 11px",fontSize:12,cursor:"pointer",fontFamily:F}}>
             📊 Analytics
@@ -1337,7 +1446,10 @@ Speech: ${stats.fillerCount} fillers, clarity ${stats.clarityScore}/100, confide
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
                 <span style={{fontSize:11,color:C.txt3}}>{answer.trim().split(/\s+/).filter(Boolean).length} words</span>
                 <div style={{display:"flex",gap:8}}>
-                  <Btn variant="ghost" onClick={nextQuestion} style={{fontSize:12,padding:"7px 14px"}}>Skip →</Btn>
+                  <Btn variant="ghost" onClick={()=>{
+                  if(scores.length===qIdx){ setScores(prev=>[...prev,0]); setAnswers(prev=>[...prev,"(skipped)"]); }
+                  nextQuestion();
+                }} style={{fontSize:12,padding:"7px 14px"}}>Skip →</Btn>
                   <Btn onClick={evaluateAnswer} disabled={!answer.trim()||loadingEval}>{loadingEval?"Ava is evaluating...":"Submit Answer →"}</Btn>
                 </div>
               </div>
@@ -1718,6 +1830,12 @@ function PricingScreen({user,onBack}){
 // ─── NAV ──────────────────────────────────────────────────────────────────────
 function Nav({user,screen,onNav,onLogout}){
   const [profileOpen,setProfileOpen]=useState(false);
+  const profileRef=useRef(null);
+  useEffect(()=>{
+    const handleClick=(e)=>{ if(profileRef.current&&!profileRef.current.contains(e.target)) setProfileOpen(false); };
+    document.addEventListener("mousedown",handleClick);
+    return()=>document.removeEventListener("mousedown",handleClick);
+  },[]);
   if(!user||screen==="auth")return null;
   const plan=PLANS[user.plan];
   const p=pct(user.tokensUsed,plan.tokens);
@@ -1751,8 +1869,9 @@ function Nav({user,screen,onNav,onLogout}){
         <Badge color={plan.color}>{plan.name}</Badge>
 
         {/* Profile avatar — clickable */}
-        <div style={{position:"relative"}}>
+        <div style={{position:"relative"}} ref={profileRef}>
           <div onClick={()=>setProfileOpen(o=>!o)}
+            aria-label="Profile menu"
             style={{width:32,height:32,borderRadius:"50%",background:C.accent,display:"flex",
               alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#fff",
               cursor:"pointer",border:`2px solid ${profileOpen?C.accentHover:C.border}`,
