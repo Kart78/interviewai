@@ -85,7 +85,7 @@ const ADMIN_EMAILS = [
   "kart78@gmail.com",        // owner
   "friend@gmail.com",        // admin 2
   "Tester@company.com",   // admin 3
-rekhasandeep49@gmail.com, //admin4
+"rekhasandeep49@gmail.com", //admin4
 ];
 const isAdmin = (email) => ADMIN_EMAILS.includes(email?.toLowerCase().trim());
 
