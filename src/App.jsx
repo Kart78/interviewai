@@ -82,12 +82,10 @@ const T = {
 // ─── ADMIN CONFIG ─────────────────────────────────────────────────────────────
 // Add your email here — these users get full voice + admin features
 const ADMIN_EMAILS = [
-  "kart78@gmail.com",      // owner
-  "tester@company.com"     // another admin
+  "kart78@gmail.com",        // owner
+  "friend@gmail.com",        // admin 2
+  "Tester@company.com",   // admin 3
 ];
-  // "colleague@example.com", // add more admins here
-];
-
 const isAdmin = (email) => ADMIN_EMAILS.includes(email?.toLowerCase().trim());
 
 // Voice access rules:
