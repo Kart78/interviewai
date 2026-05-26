@@ -83,7 +83,7 @@ const T = {
 // Add your email here — these users get full voice + admin features
 const ADMIN_EMAILS = [
   "kart78@gmail.com",      // owner
-  "tester@company.com",        // another admin
+  "tester@company.com"     // another admin
 ];
   // "colleague@example.com", // add more admins here
 ];
