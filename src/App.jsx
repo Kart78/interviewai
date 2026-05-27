@@ -1224,20 +1224,50 @@ Requirements:
     return()=>clearTimeout(id);
   },[listening]);
 
-  // ── Speak question via TTS ──
+  // ── Ava voice — warm, clear, natural female voice ──
+  const getAvaVoice=useCallback(()=>{
+    const voices=window.speechSynthesis.getVoices();
+    if(!voices.length) return null;
+    // Priority list — best natural-sounding voices across browsers/OS
+    const preferred=[
+      "Samantha",          // macOS/iOS — warm, natural
+      "Karen",             // macOS Australian — clear
+      "Moira",             // macOS Irish — friendly
+      "Tessa",             // macOS South African
+      "Serena",            // macOS enhanced
+      "Google UK English Female", // Chrome — polite British
+      "Google US English",        // Chrome fallback
+      "Microsoft Aria Online",    // Edge — very natural
+      "Microsoft Jenny Online",   // Edge — warm
+      "Microsoft Zira",           // Windows — clear
+    ];
+    for(const name of preferred){
+      const v=voices.find(v=>v.name.includes(name));
+      if(v) return v;
+    }
+    // Final fallback — any female-labeled voice
+    return voices.find(v=>
+      v.name.toLowerCase().includes("female")||
+      v.name.toLowerCase().includes("woman")||
+      (v.lang.startsWith("en")&&v.name.toLowerCase().includes("f"))
+    ) || voices.find(v=>v.lang.startsWith("en")) || null;
+  },[]);
+
   const speakText=useCallback((text,onEnd)=>{
     if(!config.voiceEnabled||!window.speechSynthesis)return onEnd?.();
     window.speechSynthesis.cancel();
     const utt=new SpeechSynthesisUtterance(text);
-    utt.rate=0.88; utt.pitch=1.05; utt.volume=1;
-    // Prefer a female voice
-    const voices=window.speechSynthesis.getVoices();
-    const fem=voices.find(v=>v.name.toLowerCase().includes("female")||v.name.includes("Samantha")||v.name.includes("Karen")||v.name.includes("Moira"));
-    if(fem)utt.voice=fem;
+    // Ava's voice settings — warm, calm, clear
+    utt.rate=0.90;    // slightly slower = more thoughtful, less rushed
+    utt.pitch=1.08;   // slightly higher = friendly, approachable
+    utt.volume=0.95;  // just under full — comfortable, not blaring
+    const voice=getAvaVoice();
+    if(voice) utt.voice=voice;
     utt.onstart=()=>setAvaSpeaking(true);
     utt.onend=()=>{ setAvaSpeaking(false); onEnd?.(); };
+    utt.onerror=()=>{ setAvaSpeaking(false); onEnd?.(); };
     window.speechSynthesis.speak(utt);
-  },[config.voiceEnabled]);
+  },[config.voiceEnabled, getAvaVoice]);
 
   // ── Ask question when question changes — Ava speaks proactively ──
   useEffect(()=>{
@@ -1248,7 +1278,7 @@ Requirements:
     const startListening=()=>{
       setTimerActive(true);
       setAvaListening(true);
-      setAvaMessage("I'm listening — take your time, structure your answer, and speak confidently.");
+      setAvaMessage("I'm listening carefully — please take your time and answer in your own way.");
       // Auto-start mic after Ava finishes speaking (Chrome/Edge only)
       if(window.SpeechRecognition||window.webkitSpeechRecognition){
         setTimeout(()=>{ toggleListenAuto(); }, 300);
@@ -1256,21 +1286,19 @@ Requirements:
     };
 
     if(qIdx===0){
-      // Warm welcome intro before first question
-      const intro=`Hi! I'm Ava, your personal interview coach. I've prepared ${questions.length} personalised questions for you today. Take your time with each answer, and I'll give you real feedback after every response. Let's begin. Question 1. ${currentQ}`;
-      setAvaMessage("Welcome! Let's start your interview.");
+      const intro=`Hello, and a very warm welcome! I'm Ava, your personal interview coach. It's wonderful to have you here today. I've carefully prepared ${questions.length} questions based on your background, and I'm genuinely here to help you do your very best. Please take all the time you need with each answer — there's no rush at all. Whenever you're ready, here is your first question. ${currentQ}`;
+      setAvaMessage("Welcome! I'm so glad you're here. Let's begin whenever you're ready.");
       speakText(intro, startListening);
     } else {
-      // Encouraging bridge between questions
       const bridges=[
-        `Great effort on that one. Now, question ${qIdx+1}. ${currentQ}`,
-        `Good. Let's keep the momentum going. Question ${qIdx+1}. ${currentQ}`,
-        `Well done. Here's your next question. ${currentQ}`,
-        `You're doing well — stay focused. Question ${qIdx+1}. ${currentQ}`,
-        `Almost there! Last question. ${currentQ}`,
+        `Thank you so much for sharing that. You're doing really well. Here is your next question, number ${qIdx+1}. ${currentQ}`,
+        `That was a lovely answer, thank you. Please take a moment if you need it. Here is question ${qIdx+1}. ${currentQ}`,
+        `Wonderful, thank you for that response. You should feel proud of the effort you're putting in. Question ${qIdx+1}. ${currentQ}`,
+        `You are doing beautifully — please keep going. Here is question ${qIdx+1}. ${currentQ}`,
+        `You've done so well to get here. This is your final question, so give it your best. ${currentQ}`,
       ];
       const bridge=isLast?bridges[4]:bridges[Math.min(qIdx-1,3)];
-      setAvaMessage(`Question ${qIdx+1} of ${questions.length}`);
+      setAvaMessage(`Question ${qIdx+1} of ${questions.length} — you're doing great!`);
       speakText(bridge, startListening);
     }
   },[qIdx,currentQ,loadingQ,speakText,questions.length,isLast]);
@@ -1285,17 +1313,17 @@ Requirements:
       const wordCount=answer.trim().split(/\s+/).filter(Boolean).length;
       // Pick the most relevant tip — only one at a time
       if(stats.fillerRate>12)
-        setCoachTip("💡 Ava: Great start! Try to pause briefly instead of saying 'um' or 'like' — silence is powerful in an interview.");
+        setCoachTip("💙 Ava: You're doing really well! A gentle tip — try pausing briefly instead of saying 'um' or 'like'. A short pause actually sounds very confident to interviewers.");
       else if(stats.confidenceScore<50)
-        setCoachTip("💡 Ava: You're on the right track! Replace phrases like 'I think' or 'maybe' with 'I would' or 'In my experience' — you'll sound much more confident.");
+        setCoachTip("💙 Ava: I can see you have great knowledge here! May I suggest replacing phrases like 'I think' with 'In my experience' or 'I would' — it helps your confidence shine through beautifully.");
       else if(answer.split(/[.!?]+/).filter(s=>s.trim().length>5).length<=1&&wordCount>60)
-        setCoachTip("💡 Ava: Good content! Try the STAR method — Situation, Task, Action, Result — it gives your answer a clear structure that interviewers love.");
+        setCoachTip("💙 Ava: Lovely content! You might find it helpful to use the STAR method — Situation, Task, Action, Result. It gives interviewers a really clear picture of your experience.");
       else if(wordCount<40&&wordCount>20)
-        setCoachTip("💡 Ava: Nice start! Can you add a specific example or outcome? Concrete details make answers much more memorable.");
+        setCoachTip("💙 Ava: Great start! Would you be able to share a specific example or outcome? Concrete details help interviewers appreciate your experience so much more.");
       else if(wordCount>200)
-        setCoachTip("💡 Ava: Great depth! Start wrapping up — aim for 1.5 to 2 minutes, then invite a follow-up if needed.");
+        setCoachTip("💙 Ava: Wonderful depth — you clearly know this topic well! When you feel ready, it's a good idea to start wrapping up. Quality over length is always appreciated.");
       else if(stats.vocabularyScore>80&&wordCount>50)
-        setCoachTip("✨ Ava: Excellent vocabulary and strong structure — this is shaping up to be a great answer!");
+        setCoachTip("✨ Ava: This is a really impressive answer — excellent structure and vocabulary. I think interviewers will respond very positively to this!");
       else
         setCoachTip("");
     },1400);
@@ -1363,8 +1391,8 @@ Speech: ${stats.fillerCount} fillers, clarity ${stats.clarityScore}/100, confide
         setAnswers(prev=>[...prev,finalAnswer]);
         setScores(prev=>[...prev,parsed.score]);
         setAvaThinking(false);
-        setAvaMessage(parsed.ava_feedback||"Good effort! Let's keep going.");
-        speakText(parsed.ava_feedback||`You scored ${parsed.score} out of 100. ${parsed.verdict}`,()=>{});
+        setAvaMessage(parsed.ava_feedback||"Thank you so much for that answer. Let's keep going — you're doing wonderfully.");
+        speakText(parsed.ava_feedback||`Thank you for your answer. You scored ${parsed.score} out of 100. ${parsed.verdict} Please don't worry — every answer is a chance to improve, and you are doing really well.`,()=>{});
       } else throw new Error();
     }catch{
       const fb={
@@ -1762,7 +1790,7 @@ Total fillers: ${result.totalFillers||0}`}],
         next_steps:["Research the STAR method and practice 3 answers","Add numbers to every achievement on your resume","Schedule a practice session with Ava tomorrow"],
         resources:[{title:"STAR Method Guide",type:"Article"},{title:"Interview Prep Roadmap",type:"Course"}],
         hiring_verdict:result.overallScore>=75?"Strong candidate — ready to interview":"Good foundation — 2 weeks targeted prep recommended",
-        ava_closing:"You showed real potential today! Every interview is practice, and you're getting stronger. Come back tomorrow and let's work on the areas we identified. You've got this! 🌟",
+        ava_closing:"I am so proud of the effort you put in today. Every single interview is a step forward, and you should feel really good about what you've achieved here. Please come back whenever you'd like to practise — I'll always be here to support you. You've absolutely got this. Well done! 🌟",
       });
     }
     setLoading(false);
@@ -1772,10 +1800,12 @@ Total fillers: ${result.totalFillers||0}`}],
     if(!report?.ava_closing||!window.speechSynthesis)return;
     window.speechSynthesis.cancel();
     const utt=new SpeechSynthesisUtterance(report.ava_closing);
-    utt.rate=0.9; utt.pitch=1.05;
+    utt.rate=0.90; utt.pitch=1.08; utt.volume=0.95;
     const voices=window.speechSynthesis.getVoices();
-    const fem=voices.find(v=>v.name.includes("Samantha")||v.name.includes("Karen")||v.name.toLowerCase().includes("female"));
-    if(fem)utt.voice=fem;
+    const preferred=["Samantha","Karen","Moira","Tessa","Google UK English Female","Microsoft Aria Online","Microsoft Jenny Online","Microsoft Zira"];
+    const voice=preferred.reduce((found,name)=>found||voices.find(v=>v.name.includes(name)),null)
+      ||voices.find(v=>v.lang.startsWith("en"))||null;
+    if(voice)utt.voice=voice;
     utt.onstart=()=>setAvaSpeaking(true); utt.onend=()=>setAvaSpeaking(false);
     window.speechSynthesis.speak(utt);
   };
