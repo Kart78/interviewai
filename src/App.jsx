@@ -82,11 +82,10 @@ const T = {
 // ─── ADMIN CONFIG ─────────────────────────────────────────────────────────────
 // Add your email here — these users get full voice + admin features
 const ADMIN_EMAILS = [
-  "kart78@gmail.com",        // owner
-  "friend@gmail.com",        // admin 2
-  "Tester@company.com",   // admin 3
-"rekhasandeep49@gmail.com", //admin4
+  "kart78@gmail.com",      // owner
+  // "colleague@example.com", // add more admins here
 ];
+
 const isAdmin = (email) => ADMIN_EMAILS.includes(email?.toLowerCase().trim());
 
 // Voice access rules:
@@ -151,9 +150,20 @@ const pct  = (u,t) => t===Infinity?0:Math.min(100,Math.round(u/t*100));
 const barC = p => p>=90?C.red:p>=70?C.amber:C.green;
 
 function analyzeSpeech(text){
-  if(!text?.trim()) return {fillerCount:0,fillerWords:{},wordCount:0,wpm:0,clarityScore:100,confidenceScore:100,vocabularyScore:100,paceLabel:"—",paceColor:C.txt3};
+  // No text — return null scores so UI shows "—" not fake 100s
+  if(!text?.trim()) return {
+    fillerCount:0, fillerWords:{}, wordCount:0, wpm:0,
+    clarityScore:null, confidenceScore:null, vocabularyScore:null,
+    paceLabel:"—", paceColor:C.txt3, fillerRate:0
+  };
   const lower=text.toLowerCase(), words=text.trim().split(/\s+/).filter(Boolean);
   const wordCount=words.length;
+  // Need at least 10 words for meaningful scores
+  if(wordCount<10) return {
+    fillerCount:0, fillerWords:{}, wordCount, wpm:0,
+    clarityScore:null, confidenceScore:null, vocabularyScore:null,
+    paceLabel:"Keep going…", paceColor:C.txt3, fillerRate:0
+  };
   const fillerWords={};let fillerCount=0;
   FILLERS.forEach(f=>{const m=lower.match(new RegExp(`\\b${f}\\b`,"g"));if(m){fillerWords[f]=m.length;fillerCount+=m.length;}});
   const fillerRate=wordCount>0?Math.round(fillerCount/wordCount*100):0;
@@ -1617,37 +1627,66 @@ Speech: ${stats.fillerCount} fillers, clarity ${stats.clarityScore}/100, confide
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:"0.75rem"}}>
                 {listening&&<div style={{width:7,height:7,borderRadius:"50%",background:C.red,animation:"pulse 1s infinite"}}/>}
                 <span style={{fontSize:11,color:C.txt2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em"}}>Live Speech Analytics</span>
-                {speech.wordCount>0&&<span style={{fontSize:10,color:C.txt3,marginLeft:"auto"}}>{speech.wordCount}w</span>}
+                {speech.wordCount>0&&<span style={{fontSize:10,color:C.txt3,marginLeft:"auto"}}>{speech.wordCount} words</span>}
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:"0.75rem"}}>
-                {[["Clarity",speech.clarityScore],[" Confidence",speech.confidenceScore],["Vocabulary",speech.vocabularyScore]].map(([l,v])=>(
-                  <div key={l}>
-                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.txt3,marginBottom:3}}>
-                      <span>{l}</span><span style={{color:v>=75?C.green:v>=50?C.amber:C.red,fontWeight:600}}>{v}</span>
-                    </div>
-                    <div style={{height:4,background:C.border,borderRadius:99,overflow:"hidden"}}>
-                      <div style={{height:"100%",width:`${v}%`,background:v>=75?C.green:v>=50?C.amber:C.red,borderRadius:99}}/>
-                    </div>
+
+              {/* Show waiting state when no speech yet */}
+              {speech.wordCount===0?(
+                <div style={{textAlign:"center",padding:"1rem 0"}}>
+                  <div style={{fontSize:24,marginBottom:8}}>🎙</div>
+                  <div style={{fontSize:12,color:C.txt3}}>
+                    {listening?"Listening for your answer...":"Start speaking to see live analytics"}
                   </div>
-                ))}
-                <div>
-                  <div style={{fontSize:10,color:C.txt3,marginBottom:3}}>Pace</div>
-                  <div style={{fontSize:13,fontWeight:700,color:speech.paceColor}}>{speech.paceLabel}</div>
-                  <div style={{fontSize:10,color:C.txt3}}>{speech.wpm>0?`~${speech.wpm} wpm`:""}</div>
                 </div>
-              </div>
-              {speech.fillerCount>0?(
-                <div style={{background:`${C.amber}10`,border:`1px solid ${C.amber}30`,borderRadius:8,padding:"0.6rem 0.8rem"}}>
-                  <div style={{fontSize:11,color:C.amber,fontWeight:600,marginBottom:5}}>⚠ {speech.fillerCount} filler words</div>
-                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                    {Object.entries(speech.fillerWords).slice(0,4).map(([w,n])=>(
-                      <span key={w} style={{fontSize:10,padding:"1px 7px",borderRadius:99,background:`${C.amber}22`,color:C.amber}}>"{w}" ×{n}</span>
+              ):(
+                <>
+                  {/* Scores — only show when enough words for accuracy */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:"0.75rem"}}>
+                    {[["Clarity",speech.clarityScore],["Confidence",speech.confidenceScore],["Vocabulary",speech.vocabularyScore]].map(([l,v])=>(
+                      <div key={l}>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.txt3,marginBottom:3}}>
+                          <span>{l}</span>
+                          <span style={{
+                            color:v===null?C.txt3:v>=75?C.green:v>=50?C.amber:C.red,
+                            fontWeight:600
+                          }}>
+                            {v===null?"—":v}
+                          </span>
+                        </div>
+                        <div style={{height:4,background:C.border,borderRadius:99,overflow:"hidden"}}>
+                          <div style={{
+                            height:"100%",
+                            width:v===null?"0%":`${v}%`,
+                            background:v===null?C.border:v>=75?C.green:v>=50?C.amber:C.red,
+                            borderRadius:99,
+                            transition:"width 0.4s"
+                          }}/>
+                        </div>
+                        {v===null&&<div style={{fontSize:9,color:C.txt4,marginTop:2}}>need 10+ words</div>}
+                      </div>
                     ))}
+                    <div>
+                      <div style={{fontSize:10,color:C.txt3,marginBottom:3}}>Pace</div>
+                      <div style={{fontSize:13,fontWeight:700,color:speech.paceColor}}>{speech.paceLabel}</div>
+                      <div style={{fontSize:10,color:C.txt3}}>{speech.wpm>0?`~${speech.wpm} wpm`:""}</div>
+                    </div>
                   </div>
-                </div>
-              ):speech.wordCount>10?(
-                <div style={{background:C.greenSoft,border:`1px solid ${C.green}30`,borderRadius:8,padding:"0.5rem 0.8rem",fontSize:11,color:C.green}}>✓ No filler words detected!</div>
-              ):null}
+
+                  {/* Filler words */}
+                  {speech.fillerCount>0?(
+                    <div style={{background:`${C.amber}10`,border:`1px solid ${C.amber}30`,borderRadius:8,padding:"0.6rem 0.8rem"}}>
+                      <div style={{fontSize:11,color:C.amber,fontWeight:600,marginBottom:5}}>⚠ {speech.fillerCount} filler words</div>
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                        {Object.entries(speech.fillerWords).slice(0,4).map(([w,n])=>(
+                          <span key={w} style={{fontSize:10,padding:"1px 7px",borderRadius:99,background:`${C.amber}22`,color:C.amber}}>"{w}" ×{n}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ):speech.wordCount>=10?(
+                    <div style={{background:C.greenSoft,border:`1px solid ${C.green}30`,borderRadius:8,padding:"0.5rem 0.8rem",fontSize:11,color:C.green}}>✓ No filler words detected!</div>
+                  ):null}
+                </>
+              )}
             </div>
 
             {/* Q-by-Q scores */}
@@ -1796,7 +1835,7 @@ Total fillers: ${result.totalFillers||0}`}],
           <ScoreBar label="Communication" value={report?.communication_score||0}/>
           <ScoreBar label="Confidence" value={report?.confidence_score||0}/>
           <ScoreBar label="Problem solving" value={report?.problem_solving_score||0}/>
-          {result.avgClarity!=null&&(
+          {result.avgClarity!=null&&result.totalFillers!=null&&(
             <>
               <div style={{borderTop:`1px solid ${C.border}`,margin:"12px 0",paddingTop:12}}>
                 <div style={{fontSize:11,color:C.txt3,marginBottom:10,textTransform:"uppercase",letterSpacing:"0.05em"}}>Speech analytics</div>
