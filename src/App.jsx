@@ -1935,55 +1935,232 @@ Total fillers: ${result.totalFillers||0}`}],
   );
 }
 
+// ─── STRIPE PRICE IDs — paste yours from Stripe Dashboard ───────────────────
+// Stripe Dashboard → Product catalog → click product → copy Price ID
+const STRIPE_PRICES = {
+  starter:    import.meta.env.VITE_STRIPE_STARTER_PRICE_ID   || "",
+  pro:        import.meta.env.VITE_STRIPE_PRO_PRICE_ID       || "",
+  topup100k:  import.meta.env.VITE_STRIPE_TOPUP_100K_PRICE_ID|| "",
+  topup500k:  import.meta.env.VITE_STRIPE_TOPUP_500K_PRICE_ID|| "",
+};
+
+// ─── STRIPE CHECKOUT via Supabase Edge Function ───────────────────────────────
+async function createCheckoutSession(priceId, userEmail, mode="subscription"){
+  const { data:{ session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  const edgeFnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`;
+  const res = await fetch(edgeFnUrl,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      ...(token?{"Authorization":`Bearer ${token}`}:{}),
+    },
+    body:JSON.stringify({
+      price_id: priceId,
+      mode,  // "subscription" or "payment" for one-time
+      success_url: `${window.location.origin}?checkout=success`,
+      cancel_url:  `${window.location.origin}?checkout=cancel`,
+      customer_email: userEmail,
+    }),
+  });
+  if(!res.ok) throw new Error("Failed to create checkout session");
+  const { url } = await res.json();
+  if(url) window.location.href = url; // redirect to Stripe Checkout
+  else throw new Error("No checkout URL returned");
+}
+
 // ─── SCREEN: PRICING ─────────────────────────────────────────────────────────
 function PricingScreen({user,onBack}){
+  const [loadingPlan,setLoadingPlan]=useState(null);
+  const [checkoutError,setCheckoutError]=useState("");
+
+  // Show success/cancel message if returning from Stripe
+  const params=new URLSearchParams(window.location.search);
+  const checkoutStatus=params.get("checkout");
+
+  const handleUpgrade=async(planKey)=>{
+    const priceId=STRIPE_PRICES[planKey];
+    if(!priceId){
+      setCheckoutError(`Price ID for ${planKey} not configured yet. Add VITE_STRIPE_${planKey.toUpperCase()}_PRICE_ID to Vercel env vars.`);
+      return;
+    }
+    setLoadingPlan(planKey); setCheckoutError("");
+    try{
+      await createCheckoutSession(priceId, user.email, "subscription");
+    }catch(err){
+      setCheckoutError(err.message||"Checkout failed — please try again");
+      setLoadingPlan(null);
+    }
+  };
+
+  const handleTopup=async(key,label,price)=>{
+    const priceId=STRIPE_PRICES[key];
+    if(!priceId){
+      setCheckoutError(`Top-up price ID not configured. Add VITE_STRIPE_${key.toUpperCase()}_PRICE_ID to Vercel.`);
+      return;
+    }
+    setLoadingPlan(key); setCheckoutError("");
+    try{
+      await createCheckoutSession(priceId, user.email, "payment");
+    }catch(err){
+      setCheckoutError(err.message||"Checkout failed");
+      setLoadingPlan(null);
+    }
+  };
+
   return(
-    <div style={{padding:"2rem",maxWidth:900,margin:"0 auto",fontFamily:F}}>
+    <div style={{padding:"2rem",maxWidth:960,margin:"0 auto",fontFamily:F}}>
       <button onClick={onBack} style={{background:"none",border:"none",color:C.txt2,cursor:"pointer",fontSize:14,marginBottom:"1.5rem"}}>← Back</button>
-      <h2 style={{color:C.txt,textAlign:"center",marginBottom:8,fontSize:24}}>Choose your plan</h2>
-      <p style={{color:C.txt2,textAlign:"center",marginBottom:"2rem",fontSize:14}}>Upgrade anytime · Cancel anytime · Tokens reset monthly</p>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:16}}>
+
+      {/* Checkout return banners */}
+      {checkoutStatus==="success"&&(
+        <div style={{background:C.greenSoft,border:`1px solid ${C.greenMid}`,borderRadius:12,
+          padding:"14px 20px",marginBottom:"1.5rem",display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:20}}>🎉</span>
+          <div>
+            <div style={{...T.h4,margin:0,color:C.green}}>Payment successful!</div>
+            <div style={{...T.uiSm,color:C.txt2,marginTop:3}}>Your plan has been upgraded. Enjoy your new features!</div>
+          </div>
+        </div>
+      )}
+      {checkoutStatus==="cancel"&&(
+        <div style={{background:C.amberSoft,border:`1px solid ${C.amberMid}`,borderRadius:12,
+          padding:"14px 20px",marginBottom:"1.5rem"}}>
+          <div style={{...T.uiSm,color:C.amber}}>No worries — your checkout was cancelled. You can upgrade whenever you're ready.</div>
+        </div>
+      )}
+      {checkoutError&&(
+        <div style={{background:C.redSoft,border:`1px solid ${C.redMid}`,borderRadius:12,
+          padding:"14px 20px",marginBottom:"1.5rem"}}>
+          <div style={{...T.uiSm,color:C.red}}>⚠ {checkoutError}</div>
+        </div>
+      )}
+
+      <h2 style={{...T.h1,textAlign:"center",marginBottom:8}}>Choose your plan</h2>
+      <p style={{...T.ui,color:C.txt2,textAlign:"center",marginBottom:"2.5rem"}}>
+        Upgrade anytime · Cancel anytime · Tokens reset monthly
+      </p>
+
+      {/* Plan cards */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:16,marginBottom:"2rem"}}>
         {Object.entries(PLANS).map(([key,plan])=>{
           const isCurrent=user.plan===key;
           const isPro=key==="pro";
+          const isLoading=loadingPlan===key;
+          const priceId=STRIPE_PRICES[key];
+          const canUpgrade=!isCurrent&&plan.price!==null&&plan.price>0;
+
           return(
-            <div key={key} style={{background:C.card,border:`${isPro?2:1}px solid ${isPro?C.accent:isCurrent?C.borderHover:C.border}`,
-              borderRadius:16,padding:"1.5rem",position:"relative"}}>
-              {isPro&&<div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",
-                background:C.accent,color:"#fff",fontSize:11,fontWeight:700,padding:"3px 12px",borderRadius:99,whiteSpace:"nowrap"}}>MOST POPULAR</div>}
-              {isCurrent&&<div style={{position:"absolute",top:12,right:12}}><Badge color={C.green}>Current</Badge></div>}
-              <div style={{color:plan.color,fontWeight:700,fontSize:16,marginBottom:4}}>{plan.name}</div>
-              <div style={{color:C.txt,fontSize:28,fontWeight:800,marginBottom:4}}>
-                {plan.price===null?"Custom":plan.price===0?"Free":`$${plan.price}`}
+            <div key={key} style={{
+              background:C.card,
+              border:`${isPro?2:1}px solid ${isPro?C.accent:isCurrent?C.green+"66":C.border}`,
+              borderRadius:16,padding:"1.5rem",position:"relative",
+              transition:"transform 0.15s",
+            }}>
+              {isPro&&(
+                <div style={{position:"absolute",top:-13,left:"50%",transform:"translateX(-50%)",
+                  background:C.accent,color:"#fff",fontSize:11,fontWeight:700,
+                  padding:"4px 14px",borderRadius:99,whiteSpace:"nowrap",
+                  boxShadow:`0 2px 8px ${C.accent}55`}}>
+                  MOST POPULAR
+                </div>
+              )}
+              {isCurrent&&(
+                <div style={{position:"absolute",top:12,right:12}}>
+                  <Badge color={C.green} size="md">Current</Badge>
+                </div>
+              )}
+
+              {/* Plan name + price */}
+              <div style={{color:plan.color,fontWeight:700,fontSize:17,marginBottom:6}}>{plan.name}</div>
+              <div style={{marginBottom:4}}>
+                <span style={{color:C.txt,fontSize:30,fontWeight:800,letterSpacing:"-0.02em"}}>
+                  {plan.price===null?"Custom":plan.price===0?"Free":`$${plan.price}`}
+                </span>
                 {plan.price>0&&<span style={{fontSize:14,color:C.txt2,fontWeight:400}}>/mo</span>}
               </div>
-              <div style={{borderTop:`1px solid ${C.border}`,margin:"14px 0",paddingTop:14}}>
+
+              {/* Features */}
+              <div style={{borderTop:`1px solid ${C.border}`,margin:"14px 0",paddingTop:14,display:"flex",flexDirection:"column",gap:7}}>
                 {[
-                  `${plan.tokens===Infinity?"Unlimited":fmtN(plan.tokens)} tokens`,
-                  `${plan.sessions===999?"Unlimited":plan.sessions} sessions`,
-                  plan.voice?"✓ Voice + Ava coach":"✗ No voice",
-                  key!=="free"?"✓ Full scorecard":"✓ Basic report",
-                  key==="pro"||key==="enterprise"?"✓ Learning path":"",
-                  key==="enterprise"?"✓ Team dashboard":"",
-                ].filter(Boolean).map(f=>(
-                  <div key={f} style={{fontSize:13,color:f.startsWith("✗")?C.txt3:C.txt2,marginBottom:6}}>{f}</div>
+                  {text:`${plan.tokens===Infinity?"Unlimited":fmtN(plan.tokens)} tokens`,ok:true},
+                  {text:`${plan.sessions===999?"Unlimited":plan.sessions} sessions`,ok:true},
+                  {text:"Voice + Ava coach",ok:plan.voice},
+                  {text:"Full scorecard",ok:key!=="free"},
+                  {text:"Learning path",ok:key==="pro"||key==="enterprise"},
+                  {text:"Team dashboard",ok:key==="enterprise"},
+                ].filter(f=>f.text).map(f=>(
+                  <div key={f.text} style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:13,color:f.ok?C.green:C.txt4,flexShrink:0}}>{f.ok?"✓":"✗"}</span>
+                    <span style={{fontSize:13,color:f.ok?C.txt2:C.txt4}}>{f.text}</span>
+                  </div>
                 ))}
               </div>
-              <Btn variant={isCurrent?"ghost":isPro?"primary":"ghost"} disabled={isCurrent}
-                style={{width:"100%"}} onClick={()=>!isCurrent&&window.open("https://stripe.com","_blank")}>
-                {isCurrent?"Current plan":plan.price===null?"Contact us":"Upgrade →"}
+
+              {/* CTA Button */}
+              <Btn
+                variant={isCurrent?"ghost":isPro?"primary":"ghost"}
+                disabled={isCurrent||isLoading}
+                style={{width:"100%",marginTop:4}}
+                onClick={()=>{
+                  if(key==="enterprise") window.open("mailto:hello@interviewai.app?subject=Enterprise Plan","_blank");
+                  else if(canUpgrade) handleUpgrade(key);
+                }}>
+                {isLoading?"Redirecting to Stripe…":
+                 isCurrent?"Current plan":
+                 plan.price===null?"Contact us →":
+                 `Upgrade to ${plan.name} →`}
               </Btn>
+
+              {/* Show if price ID missing */}
+              {canUpgrade&&!priceId&&(
+                <div style={{fontSize:10,color:C.amber,marginTop:6,textAlign:"center"}}>
+                  ⚠ Add VITE_STRIPE_{key.toUpperCase()}_PRICE_ID to Vercel
+                </div>
+              )}
             </div>
           );
         })}
       </div>
-      <div style={{marginTop:"2rem",padding:"1.5rem",background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>
-        <h4 style={{color:C.txt,margin:"0 0 12px",fontSize:14}}>💡 Token top-ups — no plan change needed</h4>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          {[["100K tokens","$2"],["500K tokens","$8"],["1M tokens","$14"]].map(([t,p])=>(
-            <Btn key={t} variant="ghost" style={{fontSize:13}} onClick={()=>window.open("https://stripe.com","_blank")}>+ {t} for {p}</Btn>
+
+      {/* Token top-ups */}
+      <Card>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"1rem",flexWrap:"wrap",gap:8}}>
+          <div>
+            <h3 style={{...T.h4,margin:0}}>💡 Token top-ups</h3>
+            <p style={{...T.uiSm,color:C.txt2,marginTop:4}}>Need more tokens without changing your plan? Buy extra anytime.</p>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+          {[
+            {key:"topup100k",label:"100K tokens",price:"$2",desc:"~8 full sessions"},
+            {key:"topup500k",label:"500K tokens",price:"$8",desc:"~40 full sessions"},
+            {key:"topup1m",  label:"1M tokens",  price:"$14",desc:"~80 full sessions"},
+          ].map(t=>(
+            <div key={t.key} style={{flex:1,minWidth:160,background:C.elevated,
+              borderRadius:12,padding:"1rem",border:`1px solid ${C.border}`}}>
+              <div style={{...T.h4,margin:"0 0 2px"}}>{t.label}</div>
+              <div style={{fontSize:18,fontWeight:800,color:C.accent,marginBottom:2}}>{t.price}</div>
+              <div style={{...T.caption,color:C.txt3,marginBottom:10}}>{t.desc}</div>
+              <Btn variant="ghost" style={{width:"100%",fontSize:13}}
+                disabled={loadingPlan===t.key}
+                onClick={()=>handleTopup(t.key,t.label,t.price)}>
+                {loadingPlan===t.key?"Redirecting…":`Buy ${t.label}`}
+              </Btn>
+              {!STRIPE_PRICES[t.key]&&(
+                <div style={{fontSize:10,color:C.txt4,marginTop:4,textAlign:"center"}}>Price ID needed</div>
+              )}
+            </div>
           ))}
         </div>
+      </Card>
+
+      {/* Security note */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:"1.5rem"}}>
+        <span style={{fontSize:16}}>🔒</span>
+        <span style={{...T.caption,color:C.txt3}}>
+          Payments secured by Stripe · No card details stored · Cancel anytime from your account
+        </span>
       </div>
     </div>
   );
