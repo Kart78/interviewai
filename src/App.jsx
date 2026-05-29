@@ -1938,10 +1938,11 @@ Total fillers: ${result.totalFillers||0}`}],
 // ─── STRIPE PRICE IDs — paste yours from Stripe Dashboard ───────────────────
 // Stripe Dashboard → Product catalog → click product → copy Price ID
 const STRIPE_PRICES = {
-  starter:    import.meta.env.VITE_STRIPE_STARTER_PRICE_ID   || "",
-  pro:        import.meta.env.VITE_STRIPE_PRO_PRICE_ID       || "",
-  topup100k:  import.meta.env.VITE_STRIPE_TOPUP_100K_PRICE_ID|| "",
-  topup500k:  import.meta.env.VITE_STRIPE_TOPUP_500K_PRICE_ID|| "",
+  starter:    import.meta.env.VITE_STRIPE_STARTER_PRICE_ID    || "",
+  pro:        import.meta.env.VITE_STRIPE_PRO_PRICE_ID        || "",
+  topup100k:  import.meta.env.VITE_STRIPE_TOPUP_100K_PRICE_ID || "",
+  topup500k:  import.meta.env.VITE_STRIPE_TOPUP_500K_PRICE_ID || "",
+  topup1m:    import.meta.env.VITE_STRIPE_TOPUP_1M_PRICE_ID   || "",  // ← ADD
 };
 
 // ─── STRIPE CHECKOUT via Supabase Edge Function ───────────────────────────────
