@@ -56,7 +56,6 @@ const C = {
   txt4: "#3d4060",   // disabled only
 };
 
-
 // ─── TYPOGRAPHY HELPERS ───────────────────────────────────────────────────────
 // sz = font-size, fw = font-weight, lh = line-height, ls = letter-spacing
 const T = {
@@ -1939,11 +1938,10 @@ Total fillers: ${result.totalFillers||0}`}],
 // ─── STRIPE PRICE IDs — paste yours from Stripe Dashboard ───────────────────
 // Stripe Dashboard → Product catalog → click product → copy Price ID
 const STRIPE_PRICES = {
-  starter:    import.meta.env.VITE_STRIPE_STARTER_PRICE_ID    || "",
-  pro:        import.meta.env.VITE_STRIPE_PRO_PRICE_ID        || "",
-  topup100k:  import.meta.env.VITE_STRIPE_TOPUP_100K_PRICE_ID || "",
-  topup500k:  import.meta.env.VITE_STRIPE_TOPUP_500K_PRICE_ID || "",
-  topup1m:    import.meta.env.VITE_STRIPE_TOPUP_1M_PRICE_ID   || "",  // ← ADD
+  starter:    import.meta.env.VITE_STRIPE_STARTER_PRICE_ID   || "",
+  pro:        import.meta.env.VITE_STRIPE_PRO_PRICE_ID       || "",
+  topup100k:  import.meta.env.VITE_STRIPE_TOPUP_100K_PRICE_ID|| "",
+  topup500k:  import.meta.env.VITE_STRIPE_TOPUP_500K_PRICE_ID|| "",
 };
 
 // ─── STRIPE CHECKOUT via Supabase Edge Function ───────────────────────────────
@@ -2285,8 +2283,6 @@ function Nav({user,screen,onNav,onLogout}){
   );
 }
 
-
-
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App(){
   const [screen,setScreen]=useState("auth");
@@ -2339,24 +2335,4 @@ export default function App(){
       {screen==="pricing"  &&user&&<PricingScreen user={user} onBack={()=>setScreen("dashboard")}/>}
     </div>
   );
-}
-
-async function createCheckoutSession(priceId, userEmail, mode="subscription"){
-  const { data:{ session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  const edgeFnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`;
-  
-  const res = await fetch(edgeFnUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ price_id: priceId, mode, success_url: `${window.location.origin}?checkout=success`, cancel_url: `${window.location.origin}?checkout=cancel`, customer_email: userEmail }),
-  });
-
-  const data = await res.json();           // ← always parse JSON
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);  // ← real error
-  if (!data.url) throw new Error("No checkout URL returned");
-  window.location.href = data.url;
 }
