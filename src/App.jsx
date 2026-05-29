@@ -1951,20 +1951,24 @@ async function createCheckoutSession(priceId, userEmail, mode="subscription"){
   const { data:{ session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   const edgeFnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`;
-  
-  const res = await fetch(edgeFnUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+  const res = await fetch(edgeFnUrl,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      ...(token?{"Authorization":`Bearer ${token}`}:{}),
     },
-    body: JSON.stringify({ price_id: priceId, mode, success_url: `${window.location.origin}?checkout=success`, cancel_url: `${window.location.origin}?checkout=cancel`, customer_email: userEmail }),
+    body:JSON.stringify({
+      price_id: priceId,
+      mode,  // "subscription" or "payment" for one-time
+      success_url: `${window.location.origin}?checkout=success`,
+      cancel_url:  `${window.location.origin}?checkout=cancel`,
+      customer_email: userEmail,
+    }),
   });
-
-  const data = await res.json();           // ← always parse JSON
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);  // ← real error
-  if (!data.url) throw new Error("No checkout URL returned");
-  window.location.href = data.url;
+  if(!res.ok) throw new Error("Failed to create checkout session");
+  const { url } = await res.json();
+  if(url) window.location.href = url; // redirect to Stripe Checkout
+  else throw new Error("No checkout URL returned");
 }
 
 // ─── SCREEN: PRICING ─────────────────────────────────────────────────────────
