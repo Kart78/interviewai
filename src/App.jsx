@@ -56,6 +56,7 @@ const C = {
   txt4: "#3d4060",   // disabled only
 };
 
+
 // ─── TYPOGRAPHY HELPERS ───────────────────────────────────────────────────────
 // sz = font-size, fw = font-weight, lh = line-height, ls = letter-spacing
 const T = {
@@ -2284,6 +2285,8 @@ function Nav({user,screen,onNav,onLogout}){
   );
 }
 
+
+
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App(){
   const [screen,setScreen]=useState("auth");
@@ -2336,4 +2339,24 @@ export default function App(){
       {screen==="pricing"  &&user&&<PricingScreen user={user} onBack={()=>setScreen("dashboard")}/>}
     </div>
   );
+}
+
+async function createCheckoutSession(priceId, userEmail, mode="subscription"){
+  const { data:{ session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  const edgeFnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`;
+  
+  const res = await fetch(edgeFnUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ price_id: priceId, mode, success_url: `${window.location.origin}?checkout=success`, cancel_url: `${window.location.origin}?checkout=cancel`, customer_email: userEmail }),
+  });
+
+  const data = await res.json();           // ← always parse JSON
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);  // ← real error
+  if (!data.url) throw new Error("No checkout URL returned");
+  window.location.href = data.url;
 }
