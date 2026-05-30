@@ -1942,6 +1942,7 @@ const STRIPE_PRICES = {
   pro:        import.meta.env.VITE_STRIPE_PRO_PRICE_ID       || "",
   topup100k:  import.meta.env.VITE_STRIPE_TOPUP_100K_PRICE_ID|| "",
   topup500k:  import.meta.env.VITE_STRIPE_TOPUP_500K_PRICE_ID|| "",
+  topup1m:    import.meta.env.VITE_STRIPE_TOPUP1M_PRICE_ID    || "", 
 };
 
 // ─── STRIPE CHECKOUT via Supabase Edge Function ───────────────────────────────
