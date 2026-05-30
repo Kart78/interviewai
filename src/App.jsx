@@ -1148,6 +1148,15 @@ function InterviewScreen({user,config,onComplete,onBack}){
   const [waveBars,setWaveBars]=useState(Array(20).fill(4));
   const [showAnalytics,setShowAnalytics]=useState(true);
   const [avaMessage,setAvaMessage]=useState("");
+  // ── NEW STATE ──
+  const [interviewHistory,setInterviewHistory]=useState([]);
+  const [phase,setPhase]=useState("intro");
+  const [selectedVoice,setSelectedVoice]=useState(null);
+  const [availableVoices,setAvailableVoices]=useState([]);
+  const [showVoicePicker,setShowVoicePicker]=useState(false);
+
+  const PHASES=["intro","motivation","behavioral","situational","technical","close"];
+  const PHASE_LABELS={"intro":"Introduction","motivation":"Motivation","behavioral":"Behavioral","situational":"Situational","technical":"Technical","close":"Closing"};
 
   const recognitionRef=useRef(null);
   const timerRef=useRef(null);
@@ -1160,6 +1169,28 @@ function InterviewScreen({user,config,onComplete,onBack}){
       recognitionRef.current?.stop();
       clearTimeout(timerRef.current);
     };
+  },[]);
+
+  // ── Load voices — female first ──
+  useEffect(()=>{
+    const loadVoices=()=>{
+      const voices=window.speechSynthesis.getVoices();
+      const femaleNames=["Samantha","Karen","Moira","Tessa","Serena","Victoria",
+        "Aria","Jenny","Sonia","Libby","Zira","Susan","Ava","Emma",
+        "Joanna","Kimberly","Kendra","Ruth","Female","female"];
+      const englishFemale=voices.filter(v=>
+        v.lang.startsWith("en")&&femaleNames.some(n=>v.name.includes(n))
+      );
+      const allEnglish=voices.filter(v=>
+        v.lang.startsWith("en")&&!englishFemale.find(f=>f.name===v.name)
+      );
+      const combined=[...englishFemale,...allEnglish];
+      setAvailableVoices(combined);
+      if(!selectedVoice&&combined.length>0) setSelectedVoice(combined[0]);
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged=loadVoices;
+    return()=>{ window.speechSynthesis.onvoiceschanged=null; };
   },[]);
 
   const liveText=answer+(interimTranscript?" "+interimTranscript:"");
@@ -1233,8 +1264,9 @@ Rules:
     return()=>clearTimeout(id);
   },[listening]);
 
-  // ── Ava voice — warm, clear, natural female voice ──
+  // ── Ava voice — female first, user-selectable ──
   const getAvaVoice=useCallback(()=>{
+    if(selectedVoice) return selectedVoice;
     const voices=window.speechSynthesis.getVoices();
     if(!voices.length) return null;
     // Priority list — best natural-sounding voices across browsers/OS
@@ -1260,7 +1292,7 @@ Rules:
       v.name.toLowerCase().includes("woman")||
       (v.lang.startsWith("en")&&v.name.toLowerCase().includes("f"))
     ) || voices.find(v=>v.lang.startsWith("en")) || null;
-  },[]);
+  },[selectedVoice]);
 
   const speakText=useCallback((text,onEnd)=>{
     if(!config.voiceEnabled||!window.speechSynthesis)return onEnd?.();
@@ -1461,8 +1493,58 @@ Speech: ${stats.fillerCount} fillers, clarity ${stats.clarityScore}/100, confide
             color:showAnalytics?C.accent:C.txt2,borderRadius:8,padding:"4px 11px",fontSize:12,cursor:"pointer",fontFamily:F}}>
             📊 Analytics
           </button>
+          {/* Voice picker button */}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setShowVoicePicker(s=>!s)}
+              style={{background:showVoicePicker?C.accentSoft:"transparent",
+                border:`1px solid ${showVoicePicker?C.accent:C.border}`,
+                color:showVoicePicker?C.accent:C.txt2,borderRadius:8,
+                padding:"4px 11px",fontSize:12,cursor:"pointer",fontFamily:F}}>
+              🎙 {selectedVoice?selectedVoice.name.split(" ").slice(0,2).join(" "):"Voice"}
+            </button>
+            {showVoicePicker&&(
+              <div style={{position:"absolute",top:36,right:0,width:260,
+                background:C.card,border:`1px solid ${C.border}`,borderRadius:12,
+                boxShadow:"0 8px 32px #00000066",zIndex:200,maxHeight:300,overflowY:"auto"}}>
+                <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,
+                  fontSize:11,fontWeight:600,color:C.txt3,textTransform:"uppercase",letterSpacing:"0.06em"}}>
+                  Ava's Voice
+                </div>
+                {availableVoices.map((v,i)=>{
+                  const isFemale=["Aria","Jenny","Sonia","Libby","Zira","Samantha","Karen",
+                    "Moira","Tessa","Serena","Emma","Ava","Female","Kimberly"].some(n=>v.name.includes(n));
+                  const isSelected=selectedVoice?.name===v.name;
+                  return(
+                    <button key={i} onClick={()=>{
+                        setSelectedVoice(v); setShowVoicePicker(false);
+                        window.speechSynthesis.cancel();
+                        const utt=new SpeechSynthesisUtterance("Hi! I'm Ava, your interview coach. How does my voice sound?");
+                        utt.voice=v; utt.rate=0.90; utt.pitch=1.08; utt.volume=0.95;
+                        window.speechSynthesis.speak(utt);
+                      }}
+                      style={{width:"100%",padding:"9px 14px",background:isSelected?C.accentSoft:"none",
+                        border:"none",borderBottom:`1px solid ${C.border}`,
+                        color:isSelected?C.accent:C.txt2,fontSize:12,cursor:"pointer",fontFamily:F,
+                        display:"flex",alignItems:"center",justifyContent:"space-between",textAlign:"left"}}
+                      onMouseEnter={e=>!isSelected&&(e.currentTarget.style.background=C.elevated)}
+                      onMouseLeave={e=>!isSelected&&(e.currentTarget.style.background="none")}>
+                      <div>
+                        <span style={{fontWeight:isSelected?600:400}}>{v.name}</span>
+                        <span style={{fontSize:10,color:C.txt3,marginLeft:5}}>{v.lang}</span>
+                      </div>
+                      <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                        {isFemale&&<span style={{fontSize:9,padding:"2px 6px",borderRadius:99,
+                          background:C.accentSoft,color:C.accent,fontWeight:600}}>♀</span>}
+                        {isSelected&&<span style={{color:C.accent}}>✓</span>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
          <span style={{color:C.txt2,fontSize:13}}>
-  {qIdx===0?"Intro":qIdx===1?"Motivation":qIdx===2?"Behavioral":qIdx===3?"Situational":qIdx===4?"Technical":qIdx===5?"Culture Fit":"Closing"} · Q{qIdx+1}/{questions.length}
+  {PHASE_LABELS[phase]||"Interview"} · Q{qIdx+1}/{questions.length}
 </span>
           <div style={{fontWeight:700,fontSize:18,color:timerColor,fontVariantNumeric:"tabular-nums",minWidth:48}}>
             {mins}:{secs.toString().padStart(2,"0")}
