@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,30 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
-
   try {
-    // 1. Verify user is authenticated
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // 2. Get request body
     const { price_id, mode, success_url, cancel_url, customer_email } = await req.json();
 
     if (!price_id) {
@@ -49,27 +25,15 @@ serve(async (req) => {
       });
     }
 
-    // 3. Create Stripe Checkout Session
     const params = new URLSearchParams({
       "line_items[0][price]": price_id,
       "line_items[0][quantity]": "1",
       "mode": mode || "subscription",
       "success_url": success_url || "https://interviewai-ebon.vercel.app?checkout=success",
       "cancel_url": cancel_url || "https://interviewai-ebon.vercel.app?checkout=cancel",
-      "customer_email": customer_email || user.email || "",
-      // Store user ID in metadata so webhook can update their plan
-      "metadata[user_id]": user.id,
-      "metadata[price_id]": price_id,
-      // Allow promo codes
+      "customer_email": customer_email || "",
       "allow_promotion_codes": "true",
-      // Collect billing address
-      "billing_address_collection": "auto",
     });
-
-    // For subscriptions — allow portal management
-    if (mode === "subscription") {
-      params.append("subscription_data[metadata][user_id]", user.id);
-    }
 
     const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
@@ -81,12 +45,9 @@ serve(async (req) => {
     });
 
     const session = await stripeRes.json();
+    if (!stripeRes.ok) throw new Error(session.error?.message || "Stripe error");
 
-    if (!stripeRes.ok) {
-      throw new Error(session.error?.message || "Stripe checkout failed");
-    }
-
-    return new Response(JSON.stringify({ url: session.url, session_id: session.id }), {
+    return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
